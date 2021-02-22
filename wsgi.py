@@ -26,6 +26,7 @@ handler_list = [
 
 ##### DASH Framework ###########################################################
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+application = app.server
 ################################################################################
 
 
