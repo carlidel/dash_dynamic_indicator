@@ -42,8 +42,9 @@ class data_handler(object):
     def get_plot(self, parameters, log_scale=False):
         return self.f_plot(parameters, log_scale)
 
+
 ### Data location on EOS
-data_path = "/home/carlidel/Insync/carlo.montanari3@studio.unibo.it/OneDriveBiz/projects/dyn_indicator_analysis/data"
+data_path = "/eos/project/d/da-and-diffusion-studies/DA_Studies/Simulations/Models/dynamic_indicator_analysis/dynamic_indicator_analysis/data"
 
 #### DATASET STANDARD ####
 
