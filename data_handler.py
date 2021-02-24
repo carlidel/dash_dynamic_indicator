@@ -52,6 +52,8 @@ epsilon_list = [0.0, 1.0, 2.0, 4.0, 16.0, 32.0, 64.0]
 turn_samples = [10, 100, 1000, 10000, 100000]
 
 def eml(epsilon, mu):
+    epsilon = float(epsilon)
+    mu = float(mu)
     return "eps_{:.2}_mu_{:.2}_".format(epsilon, mu).replace(".", "_")
 
 
