@@ -1019,7 +1019,6 @@ def update_correlation_plot_bis(*args):
     param_dict_1 = {}
     for i in range(len(param_list_1)):
         param_dict_1[param_list_1[i]] = args[i]
-    print(param_list_1)
     data_1 = handler_1.get_data(param_dict_1)
     if 'log10' in args[6]:
         data_1 = np.log10(data_1)
