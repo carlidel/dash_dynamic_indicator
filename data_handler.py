@@ -445,9 +445,7 @@ def SALI_filename_standard(mu, epsilon):
 def SALI_get_data(parameters):
     filename = SALI_filename_standard(parameters["mu"], parameters["epsilon"])
     idx = str(parameters["turns"])
-    print(idx)
     with h5py.File(os.path.join(data_path, filename), mode="r") as f:
-        print(list(f))
         data = f[idx][...]
     return data
 
