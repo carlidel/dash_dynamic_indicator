@@ -77,6 +77,7 @@ stability_param_dict = {
 def stability_filename_standard(kick, mu, epsilon):
     return (
         "henon_4d_long_track_"
+        + ("" if kick=="no_kick" else "wkick_")
         + eml(epsilon, mu)
         + "id_basic"
         + ("" if kick=="no_kick" else "_subid_" + kick)
