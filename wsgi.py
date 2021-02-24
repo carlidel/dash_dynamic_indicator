@@ -14,12 +14,24 @@ import data_handler as dh
 data_options = [
     {'label':'Stability Time', 'value':0},
     {'label': 'LI', 'value': 1},
-    {'label': 'LEI', 'value': 2}
+    {'label': 'LEI', 'value': 2},
+    {'label': 'RE', 'value': 3},
+    {'label': 'REI', 'value': 4},
+    {'label': 'SALI', 'value': 5},
+    {'label': 'GALI', 'value': 6},
+    {'label': 'MEGNO', 'value': 7},
+    {'label': 'Frequency Map', 'value': 8},
 ]
 handler_list = [
     dh.stability_data_handler,
     dh.LI_data_handler,
-    dh.LEI_data_handler
+    dh.LEI_data_handler,
+    dh.RE_data_handler,
+    dh.REI_data_handler,
+    dh.SALI_data_handler,
+    dh.GALI_data_handler,
+    dh.MEGNO_data_handler,
+    dh.FQ_data_handler
 ]
 ################################################################################
 
