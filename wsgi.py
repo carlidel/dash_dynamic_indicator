@@ -1152,22 +1152,22 @@ app.layout = html.Div([
         dbc.Tab(
             [
                 dbc.Row(blocks[0:3]),
-                dbc.Row(blocks[3:6]),
-                dbc.Row(blocks[6:9])
+                #dbc.Row(blocks[3:6]),
+                #dbc.Row(blocks[6:9])
             ],
             label="Heatmaps",
         ),
         dbc.Tab(
             [
                 dbc.Row(tab_2_content[0]),
-                dbc.Row(tab_2_content[1]),
+                #dbc.Row(tab_2_content[1]),
             ],
             label="Correlation plot",
         ),
         dbc.Tab(
             [
                 dbc.Row(comparison_blocks[0]),
-                dbc.Row(comparison_blocks[1]),
+                #dbc.Row(comparison_blocks[1]),
             ],
             label="Heatmap Comparison"
         )
