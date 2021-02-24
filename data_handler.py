@@ -43,7 +43,7 @@ class data_handler(object):
         return self.f_plot(parameters, log_scale)
 
 ### Data location on EOS
-data_path = "/eos/project/d/da-and-diffusion-studies/DA_Studies/Simulations/Models/dynamic_indicator_analysis/dynamic_indicator_analysis/data"
+data_path = "/home/carlidel/Insync/carlo.montanari3@studio.unibo.it/OneDriveBiz/projects/dyn_indicator_analysis/data"
 
 #### DATASET STANDARD ####
 
@@ -68,7 +68,7 @@ def init_filename_standard(epsilon, mu):
 #### STABILITY ####
 
 stability_param_dict = {
-    "kick": ["no_kick", 1e-4, 1e-8, 1e-12],
+    "kick": ["no_kick", "1e-4", "1e-8", "1e-12"],
     "mu": mu_list,
     "epsilon": epsilon_list
 }
@@ -78,7 +78,7 @@ def stability_filename_standard(kick, mu, epsilon):
         "henon_4d_long_track_"
         + eml(epsilon, mu)
         + "id_basic"
-        + ("" if kick=="no_kick" else "_subid_{}".format(kick))
+        + ("" if kick=="no_kick" else "_subid_" + kick)
         + ".hdf5"
     )
 
@@ -445,8 +445,10 @@ def SALI_filename_standard(mu, epsilon):
 def SALI_get_data(parameters):
     filename = SALI_filename_standard(parameters["mu"], parameters["epsilon"])
     idx = str(parameters["turns"])
+    print(idx)
     with h5py.File(os.path.join(data_path, filename), mode="r") as f:
-        data = f[idx]
+        print(list(f))
+        data = f[idx][...]
     return data
 
 
@@ -483,7 +485,7 @@ SALI_data_handler = data_handler(
 #### GALI ####
 
 GALI_param_dict = {
-    "n_dimensions" : ["gali2, gali3, gali4"],
+    "n_dimensions" : ["gali2", "gali3", "gali4"],
     "turns": turn_samples,
     "mu": mu_list,
     "epsilon": epsilon_list
@@ -502,7 +504,7 @@ def GALI_get_data(parameters):
     filename = GALI_filename_standard(parameters["mu"], parameters["epsilon"])
     idx = str(parameters["turns"])
     with h5py.File(os.path.join(data_path, filename), mode="r") as f:
-        data = f[parameters["n_dimentions"]][idx]
+        data = f[parameters["n_dimensions"]][idx][...]
     return data
 
 
@@ -556,7 +558,7 @@ def MEGNO_get_data(parameters):
     filename = MEGNO_filename_standard(parameters["mu"], parameters["epsilon"])
     idx = str(parameters["turns"])
     with h5py.File(os.path.join(data_path, filename), mode="r") as f:
-        data = f[idx]
+        data = f[idx][...]
     return data
 
 
@@ -595,7 +597,7 @@ MEGNO_data_handler = data_handler(
 
 
 FQ_param_dict = {
-    "turns": [2**10, 2**11, 2**12, 2**13],
+    "turns": [2**11, 2**12, 2**13, 2**14],
     "mu": mu_list,
     "epsilon": epsilon_list
 }
@@ -611,7 +613,7 @@ def FQ_filename_standard(mu, epsilon):
 
 def FQ_get_data(parameters):
     filename = FQ_filename_standard(parameters["mu"], parameters["epsilon"])
-    idx = str(int(np.log2(parameters["turns"])))
+    idx = str(int(np.log2(parameters["turns"])) - 1)
     with h5py.File(os.path.join(data_path, filename), mode="r") as f:
         data = np.sqrt(
             +np.power(f[idx]["tune_x"][0] - f[idx]["tune_x"][1], 2)
