@@ -43,9 +43,9 @@ application = app.server
 
 
 ##### LAYOUT PARAMETERS ########################################################
-TAB_1_PADDING = 6
-TAB_2_PADDING = 4
-TAB_3_PADDING = 4
+TAB_1_PADDING = 3
+TAB_2_PADDING = 2
+TAB_3_PADDING = 2
 ################################################################################
 
 
@@ -694,7 +694,7 @@ for i in range(TAB_1_PADDING, TAB_2_PADDING + TAB_1_PADDING, 2)]
 
 ##### TAB3 LAYOUT ##############################################################
 comparison_blocks = [
-    dbc.Row([
+    dbc.Col(dbc.Row([
         dbc.Col([
             dbc.Row(
                 dcc.Graph(
@@ -1130,7 +1130,7 @@ comparison_blocks = [
                 ]
             )
         ]),
-    ])
+    ]))
 for i in range(TAB_1_PADDING + TAB_2_PADDING, TAB_1_PADDING + TAB_2_PADDING + TAB_3_PADDING, 2)]
 
 ################################################################################
