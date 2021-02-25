@@ -934,7 +934,7 @@ comparison_blocks = [
                                         'type': 'data_picker',
                                         'index': i+1
                                     },
-                                    children="Data visualizer {}".format(i),
+                                    children="Data visualizer {}".format(i+1),
                                 ),
                                 dcc.Dropdown(
                                     id={
@@ -1121,6 +1121,8 @@ comparison_blocks = [
                                             'value': 'log10'},
                                         {'label': ' Absolute value',
                                             'value': 'absolute'},
+                                        {'label': ' Relative difference',
+                                            'value': 'relative'},
                                     ],
                                     value=[]
                                 ),
@@ -1671,6 +1673,8 @@ def exe_update_diff_plot(*args):
 
     # make plot
     data = data_1 - data_2
+    if 'relative' in args[14]:
+        data = data / data_1
     if 'absolute' in args[14]:
         data = np.absolute(data)
     if 'log10' in args[14]:
