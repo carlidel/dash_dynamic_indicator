@@ -198,7 +198,7 @@ LEI_param_dict = {
 
 def LEI_filename_standard(displacement, mu, epsilon):
     return (
-        "henon_4d_orto_displacement_"
+        "henon_4d_LEI_"
         + eml(epsilon, mu)
         + "id_basic"
         + "_subid_{}".format(displacement)
@@ -208,39 +208,8 @@ def LEI_filename_standard(displacement, mu, epsilon):
 
 def LEI_get_data(parameters):
     filename = LEI_filename_standard(parameters["displacement"], parameters["mu"], parameters["epsilon"])
-    idx = str(parameters["turns"])
-    with h5py.File(os.path.join(data_path, filename), mode="r") as f:
-        sample = f[idx]
-
-        t11 = sample["x"][1] - sample["x"][0]
-        t12 = sample["px"][1] - sample["px"][0]
-        t13 = sample["y"][1] - sample["y"][0]
-        t14 = sample["py"][1] - sample["py"][0]
-
-        t21 = sample["x"][2] - sample["x"][0]
-        t22 = sample["px"][2] - sample["px"][0]
-        t23 = sample["y"][2] - sample["y"][0]
-        t24 = sample["py"][2] - sample["py"][0]
-
-        t31 = sample["x"][3] - sample["x"][0]
-        t32 = sample["px"][3] - sample["px"][0]
-        t33 = sample["y"][3] - sample["y"][0]
-        t34 = sample["py"][3] - sample["py"][0]
-
-        t41 = sample["x"][4] - sample["x"][0]
-        t42 = sample["px"][4] - sample["px"][0]
-        t43 = sample["y"][4] - sample["y"][0]
-        t44 = sample["py"][4] - sample["py"][0]
-
-        tm = np.transpose(np.array([
-            [t11, t12, t13, t14],
-            [t21, t22, t23, t24],
-            [t31, t32, t33, t34],
-            [t41, t42, t43, t44]
-        ]), axes=(2, 3, 0, 1))
-        tmt = np.transpose(tm, axes=(0, 1, 3, 2))
-        data = v_faddeev_leverrier(np.matmul(tmt, tm), [parameters["grade"]])[:,:,0]
-    return data
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    return f[str(parameters["turns"])][str(parameters["grade"])]
 
 
 def LEI_get_plot(parameters, log_scale=False):
@@ -366,6 +335,30 @@ REI_param_dict = {
 }
 
 
+def REI_filename_standard(kicks, mu, epsilon):
+    if kicks == "no_kick":
+        kick_label = "_subid_no_kick"
+    elif kicks == "uniform (1e-12)":
+        kick_label = "_subid_unif_kick"
+    elif kicks == "gaussian (1e-12, 1e-13)":
+        kick_label = "_subid_gauss_kick"
+    elif kicks == "uniform forward only (1e-12)":
+        kick_label = "_subid_unif_kick_forward"
+    elif kicks == "gaussian forward only (1e-12, 1e-13)":
+        kick_label = "_subid_gauss_kick_forward"
+    else:
+        print("Something is weird!!!")
+        kick_label = ""
+
+    return (
+        "henon_4d_REI_"
+        + eml(epsilon, mu)
+        + "id_basic"
+        + kick_label
+        + ".hdf5"
+    )
+
+
 def make_REI_matrix(x0, px0, y0, py0, x, px, y, py):
     d_x = x - x0
     d_px = px - px0
@@ -380,22 +373,11 @@ def make_REI_matrix(x0, px0, y0, py0, x, px, y, py):
 
 
 def REI_get_data(parameters):
-    filename0 = init_filename_standard(parameters["epsilon"], parameters["mu"])
-    filename1 = RE_filename_standard(
+    filename1 = REI_filename_standard(
         parameters["kicks"], parameters["mu"], parameters["epsilon"])
-    idx = str(parameters["turns"])
-    f0 = h5py.File(os.path.join(data_path, filename0), mode="r")
-    f1 = h5py.File(os.path.join(data_path, filename1), mode="r")
+    f = h5py.File(os.path.join(data_path, filename1), mode="r")    
+    return f[str(parameters["turns"])][str(parameters["grade"])][...]
     
-    matrix = make_REI_matrix(
-        f0["coords/x"][...], f0["coords/px"][...], f0["coords/y"][...], f0["coords/py"][...],
-        f1[idx]["x"][...], f1[idx]["px"][...], f1[idx]["y"][...], f1[idx]["py"][...]
-    )
-
-    f0.close()
-    f1.close()
-    return v_faddeev_leverrier(matrix, [parameters["grade"]])[:, :, 0]
-
 
 def REI_get_plot(parameters, log_scale=False):
     data = REI_get_data(parameters)
@@ -421,7 +403,7 @@ def REI_get_plot(parameters, log_scale=False):
 
 
 REI_data_handler = data_handler(
-    RE_filename_standard,
+    REI_filename_standard,
     REI_param_dict,
     REI_get_data,
     REI_get_plot
