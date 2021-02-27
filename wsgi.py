@@ -304,6 +304,18 @@ tab_2_content = [
                         value=50
                     )
                 ])),
+                dbc.Col(
+                    dcc.Checklist(
+                        id={
+                            'type': 'corr_figure_bis_options',
+                                    'index': i
+                        },
+                        options=[
+                            {'label': ' Log10 scale (for density)', 'value': 'log10'},
+                        ],
+                        value=[]
+                    ),
+                )
             ])
         ]),
     ]),
@@ -1496,36 +1508,9 @@ def update_correlation_plot(*args):
     return exe_update_correlation_plot(*args)
 
 
-@app.callback(
-    Output({'type': 'corr_figure', 'index': TAB_1_PADDING+2}, 'figure'),
-    [
-        Input({'type': 'dropdown_0', 'index': TAB_1_PADDING+2}, 'value'),    # 0
-        Input({'type': 'dropdown_1', 'index': TAB_1_PADDING+2}, 'value'),    # 1
-        Input({'type': 'dropdown_2', 'index': TAB_1_PADDING+2}, 'value'),    # 2
-        Input({'type': 'dropdown_3', 'index': TAB_1_PADDING+2}, 'value'),    # 3
-        Input({'type': 'dropdown_4', 'index': TAB_1_PADDING+2}, 'value'),    # 4
-        Input({'type': 'dropdown_5', 'index': TAB_1_PADDING+2}, 'value'),    # 5
-        Input({'type': 'plot_options', 'index': TAB_1_PADDING+2}, 'value'),  # 6
-        Input({'type': 'dropdown_0', 'index': TAB_1_PADDING+3}, 'value'),    # 7
-        Input({'type': 'dropdown_1', 'index': TAB_1_PADDING+3}, 'value'),    # 8
-        Input({'type': 'dropdown_2', 'index': TAB_1_PADDING+3}, 'value'),    # 9
-        Input({'type': 'dropdown_3', 'index': TAB_1_PADDING+3}, 'value'),    # 10
-        Input({'type': 'dropdown_4', 'index': TAB_1_PADDING+3}, 'value'),    # 11
-        Input({'type': 'dropdown_5', 'index': TAB_1_PADDING+3}, 'value'),    # 12
-        Input({'type': 'plot_options', 'index': TAB_1_PADDING+3}, 'value')   # 13
-    ],
-    [
-        State({'type': 'main_dropdown', 'index': TAB_1_PADDING+2}, 'value'),  # 14
-        State({'type': 'main_dropdown', 'index': TAB_1_PADDING+3}, 'value')  # 15
-    ]
-)
-def update_correlation_plot_2(*args):
-    return exe_update_correlation_plot(*args)
-
-
 def exe_update_correlation_plot_bis(*args):
-    handler_1 = handler_list[args[16]]
-    handler_2 = handler_list[args[17]]
+    handler_1 = handler_list[args[17]]
+    handler_2 = handler_list[args[18]]
 
     param_list_1 = handler_1.get_param_list()
     param_dict_1 = {}
@@ -1562,7 +1547,8 @@ def exe_update_correlation_plot_bis(*args):
     )
 
     histo[histo == 0] = np.nan
-    histo = np.log10(histo)
+    if "log10" in args[16]:
+        histo = np.log10(histo)
 
     fig = go.Figure(
         data=go.Heatmap(
@@ -1587,7 +1573,7 @@ def exe_update_correlation_plot_bis(*args):
     )
     """
     fig.update_layout(
-        title="Correlation Density Plot [log10 scale]"
+        title="Correlation Density Plot " + ("[log10 scale]" if "log10" in args[16] else "[linear scale]")
     )
 
     return fig
@@ -1612,42 +1598,14 @@ def exe_update_correlation_plot_bis(*args):
         Input({'type': 'plot_options', 'index': TAB_1_PADDING+1}, 'value'),  # 13
         Input({'type': 'corr_figure_bis_x_bin', 'index': TAB_1_PADDING}, 'value'),  # 14
         Input({'type': 'corr_figure_bis_y_bin', 'index': TAB_1_PADDING}, 'value'),  # 15
+        Input({'type': 'corr_figure_bis_options', 'index': TAB_1_PADDING}, 'value'),# 16
     ],
     [
-        State({'type': 'main_dropdown', 'index': TAB_1_PADDING}, 'value'),  # 16
-        State({'type': 'main_dropdown', 'index': TAB_1_PADDING+1}, 'value')  # 17
+        State({'type': 'main_dropdown', 'index': TAB_1_PADDING}, 'value'),  # 17
+        State({'type': 'main_dropdown', 'index': TAB_1_PADDING+1}, 'value')  # 18
     ]
 )
 def update_correlation_plot_bis(*args):
-    return exe_update_correlation_plot_bis(*args)
-
-
-@app.callback(
-    Output({'type': 'corr_figure_bis', 'index': TAB_1_PADDING+2}, 'figure'),
-    [
-        Input({'type': 'dropdown_0', 'index': TAB_1_PADDING+2}, 'value'),    # 0
-        Input({'type': 'dropdown_1', 'index': TAB_1_PADDING+2}, 'value'),    # 1
-        Input({'type': 'dropdown_2', 'index': TAB_1_PADDING+2}, 'value'),    # 2
-        Input({'type': 'dropdown_3', 'index': TAB_1_PADDING+2}, 'value'),    # 3
-        Input({'type': 'dropdown_4', 'index': TAB_1_PADDING+2}, 'value'),    # 4
-        Input({'type': 'dropdown_5', 'index': TAB_1_PADDING+2}, 'value'),    # 5
-        Input({'type': 'plot_options', 'index': TAB_1_PADDING+2}, 'value'),  # 6
-        Input({'type': 'dropdown_0', 'index': TAB_1_PADDING+3}, 'value'),    # 7
-        Input({'type': 'dropdown_1', 'index': TAB_1_PADDING+3}, 'value'),    # 8
-        Input({'type': 'dropdown_2', 'index': TAB_1_PADDING+3}, 'value'),    # 9
-        Input({'type': 'dropdown_3', 'index': TAB_1_PADDING+3}, 'value'),    # 10
-        Input({'type': 'dropdown_4', 'index': TAB_1_PADDING+3}, 'value'),    # 11
-        Input({'type': 'dropdown_5', 'index': TAB_1_PADDING+3}, 'value'),    # 12
-        Input({'type': 'plot_options', 'index': TAB_1_PADDING+3}, 'value'),  # 13
-        Input({'type': 'corr_figure_bis_x_bin', 'index': TAB_1_PADDING+2}, 'value'),  # 14
-        Input({'type': 'corr_figure_bis_y_bin', 'index': TAB_1_PADDING+2}, 'value'),  # 15
-    ],
-    [
-        State({'type': 'main_dropdown', 'index': TAB_1_PADDING+2}, 'value'),  # 16
-        State({'type': 'main_dropdown', 'index': TAB_1_PADDING+3}, 'value')  # 17
-    ]
-)
-def update_correlation_plot_bis_2(*args):
     return exe_update_correlation_plot_bis(*args)
 
 
@@ -1728,38 +1686,9 @@ def update_diff_plot(*args):
 
 
 @app.callback(
-    Output({'type': 'figure_diff', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'figure'),
-    [
-        Input({'type': 'dropdown_0', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),    # 0
-        Input({'type': 'dropdown_1', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),    # 1
-        Input({'type': 'dropdown_2', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),    # 2
-        Input({'type': 'dropdown_3', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),    # 3
-        Input({'type': 'dropdown_4', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),    # 4
-        Input({'type': 'dropdown_5', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),    # 5
-        Input({'type': 'plot_options', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),  # 6
-        Input({'type': 'dropdown_0', 'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value'),    # 7
-        Input({'type': 'dropdown_1', 'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value'),    # 8
-        Input({'type': 'dropdown_2', 'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value'),    # 9
-        Input({'type': 'dropdown_3', 'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value'),    # 10
-        Input({'type': 'dropdown_4', 'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value'),    # 11
-        Input({'type': 'dropdown_5', 'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value'),    # 12
-        Input({'type': 'plot_options', 'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value'),  # 13
-        Input({'type': 'plot_options_diff', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),  # 14
-    ],
-    [
-        State({'type': 'main_dropdown', 'index': TAB_1_PADDING+TAB_2_PADDING+2}, 'value'),  # 15
-        State({'type': 'main_dropdown', 'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value')  # 16
-    ]
-)
-def update_diff_plot_2(*args):
-    return exe_update_diff_plot(*args)
-
-
-@app.callback(
     Output("notification-toast", "is_open"),
     [
         Input({'type': 'corr_figure_bis', 'index': TAB_1_PADDING}, 'figure'),
-        Input({'type': 'corr_figure_bis', 'index': TAB_1_PADDING+2}, 'figure'),
         Input({'type': 'figure', 'index': ALL}, 'figure'),
     ]
 )
