@@ -8,9 +8,25 @@ from dash.dependencies import Input, Output, State, MATCH, ALL
 from dash.exceptions import PreventUpdate
 import json
 
-from callbacks import data_options, TAB_1_PADDING, TAB_2_PADDING, TAB_3_PADDING, T4_FIGURE_HEIGHT, T4_FIGURE_WIDTH
 from data_handler import stability_data_handler, FQ_data_handler
 
+##### LAYOUT PARAMETERS ########################################################
+TAB_1_PADDING = 9
+TAB_2_PADDING = 4
+TAB_3_PADDING = 4
+
+data_options = [
+    {'label': 'Stability Time', 'value': 0},
+    {'label': 'LI', 'value': 1},
+    {'label': 'LEI', 'value': 2},
+    {'label': 'RE', 'value': 3},
+    {'label': 'REI', 'value': 4},
+    {'label': 'SALI', 'value': 5},
+    {'label': 'GALI', 'value': 6},
+    {'label': 'MEGNO', 'value': 7},
+    {'label': 'Frequency Map', 'value': 8},
+    {'label': 'Simple radial distance', 'value': 9}
+]
 
 ##### TAB1 LAYOUT ##############################################################
 blocks = [
