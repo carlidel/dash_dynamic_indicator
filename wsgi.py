@@ -15,6 +15,13 @@ app = dash.Dash(__name__, external_stylesheets=[
                 dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 application = app.server
 
+app.config.update({
+    # remove the default of '/'
+    'routes_pathname_prefix': '',
+
+    # remove the default of '/'
+    'requests_pathname_prefix': ''
+})
 
 index_layout = html.Div([
     html.H1("INDEX"),
