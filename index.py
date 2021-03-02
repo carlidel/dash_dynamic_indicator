@@ -3,7 +3,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
-from app import app
+from wsgi import app
 from layouts import layout_1, layout_2, layout_3, layout_4
 import callbacks
 

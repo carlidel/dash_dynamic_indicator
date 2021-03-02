@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 from dash.dependencies import Input, Output, State, MATCH, ALL
-from app import app
+from wsgi import app
 import data_handler as dh
 from data_handler import TUNE_X_data_handler, TUNE_Y_data_handler
 
