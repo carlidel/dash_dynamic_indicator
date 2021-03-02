@@ -44,7 +44,7 @@ class data_handler(object):
 
 
 ### Data location on EOS
-data_path = "/eos/project/d/da-and-diffusion-studies/DA_Studies/Simulations/Models/dynamic_indicator_analysis/dynamic_indicator_analysis/data"
+data_path = "/home/carlidel/Insync/carlo.montanari3@studio.unibo.it/OneDriveBiz/projects/dyn_indicator_analysis/data"
 
 #### DATASET STANDARD ####
 
@@ -65,6 +65,64 @@ def init_filename_standard(epsilon, mu):
         + "id_basic.hdf5"
     )
 
+
+def get_raw_coordinates(parameters):
+    filename = init_filename_standard(parameters["epsilon"], parameters["mu"])
+    with h5py.File(os.path.join(data_path, filename), mode="r") as f:
+        x  = f["coords/x"][...]
+        px = f["coords/px"][...]
+        y  = f["coords/y"][...]
+        py = f["coords/py"][...]
+    return x, px, y, py
+    
+
+#### RADIUS ####
+
+radius_param_dict = {
+    "mu": mu_list,
+    "epsilon": epsilon_list
+}
+
+def radius_get_data(parameters):
+    filename = init_filename_standard(parameters["epsilon"], parameters["mu"])
+    with h5py.File(os.path.join(data_path, filename), mode="r") as f:
+        data = np.sqrt(
+            + np.power(f["coords/x"][...], 2)
+            + np.power(f["coords/px"][...], 2)
+            + np.power(f["coords/y"][...], 2)
+            + np.power(f["coords/py"][...], 2)
+        )
+    return data
+
+
+def radius_get_plot(parameters, log_scale=False):
+    data = radius_get_data(parameters)
+    if log_scale:
+        data = np.log10(data)
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=data,
+            x=np.linspace(0, 1, 500),
+            y=np.linspace(0, 1, 500),
+            hoverongaps=False,
+            colorscale="Viridis"
+        )
+    )
+    fig.update_layout(
+        title="Radial distance from center " +
+        (" [linear scale]" if not log_scale else " [log10 scale]"),
+        xaxis_title="X_0",
+        yaxis_title="Y_0"
+    )
+    return fig
+
+
+radius_data_handler = data_handler(
+    init_filename_standard,
+    radius_param_dict,
+    radius_get_data,
+    radius_get_plot
+)
 
 #### STABILITY ####
 
@@ -377,7 +435,7 @@ def REI_get_data(parameters):
         parameters["kicks"], parameters["mu"], parameters["epsilon"])
     f = h5py.File(os.path.join(data_path, filename1), mode="r")    
     return f[str(parameters["turns"])][str(parameters["grade"])][...]
-    
+
 
 def REI_get_plot(parameters, log_scale=False):
     data = REI_get_data(parameters)
@@ -631,4 +689,88 @@ FQ_data_handler = data_handler(
     FQ_param_dict,
     FQ_get_data,
     FQ_get_plot
+)
+
+
+#### TUNE ####
+
+TUNE_param_dict = {
+    "turns": [2**10, 2**11, 2**12, 2**13, 2**14],
+    "mu": mu_list,
+    "epsilon": epsilon_list
+}
+
+
+def TUNE_X_get_data(parameters):
+    filename = FQ_filename_standard(parameters["mu"], parameters["epsilon"])
+    idx = str(int(np.log2(parameters["turns"])))
+    with h5py.File(os.path.join(data_path, filename), mode="r") as f:
+        data = f[idx]["tune_x"][0]
+    return data
+
+
+def TUNE_Y_get_data(parameters):
+    filename = FQ_filename_standard(parameters["mu"], parameters["epsilon"])
+    idx = str(int(np.log2(parameters["turns"])))
+    with h5py.File(os.path.join(data_path, filename), mode="r") as f:
+        data = f[idx]["tune_y"][0]
+    return data
+
+
+def TUNE_X_get_plot(parameters, log_scale=False):
+    data = TUNE_X_get_data(parameters)
+    if log_scale:
+        data = np.log10(data)
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=data,
+            x=np.linspace(0, 1, 500),
+            y=np.linspace(0, 1, 500),
+            hoverongaps=False,
+            colorscale="Viridis"
+        )
+    )
+    fig.update_layout(
+        title="Tune X " +
+        (" [linear scale]" if not log_scale else " [log10 scale]"),
+        xaxis_title="X_0",
+        yaxis_title="Y_0"
+    )
+    return fig
+
+
+def TUNE_Y_get_plot(parameters, log_scale=False):
+    data = TUNE_Y_get_data(parameters)
+    if log_scale:
+        data = np.log10(data)
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=data,
+            x=np.linspace(0, 1, 500),
+            y=np.linspace(0, 1, 500),
+            hoverongaps=False,
+            colorscale="Viridis"
+        )
+    )
+    fig.update_layout(
+        title="Tune X " +
+        (" [linear scale]" if not log_scale else " [log10 scale]"),
+        xaxis_title="X_0",
+        yaxis_title="Y_0"
+    )
+    return fig
+
+
+TUNE_X_data_handler = data_handler(
+    FQ_filename_standard,
+    TUNE_param_dict,
+    TUNE_X_get_data,
+    TUNE_X_get_plot
+)
+
+TUNE_Y_data_handler = data_handler(
+    FQ_filename_standard,
+    TUNE_param_dict,
+    TUNE_Y_get_data,
+    TUNE_Y_get_plot
 )
