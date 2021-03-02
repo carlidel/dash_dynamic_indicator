@@ -11,7 +11,8 @@ from data_handler import TUNE_X_data_handler, TUNE_Y_data_handler
 
 from layouts import layout_1, layout_2, layout_3, layout_4
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app = dash.Dash(__name__, external_stylesheets=[
+                dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 application = app.server
 
 index_layout = html.Div([
@@ -895,4 +896,4 @@ def update_toast_4(*p):
     return True
 ################################################################################
 if __name__ == '__main__':
-    app.run_server(port=8080)
+    app.run_server(host="0.0.0.0", port=8080)
