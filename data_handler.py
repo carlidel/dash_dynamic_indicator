@@ -21,11 +21,12 @@ v_faddeev_leverrier = np.vectorize(
 
 
 class data_handler(object):
-    def __init__(self, filename_standard, param_dict, f_data, f_plot):
+    def __init__(self, filename_standard, param_dict, f_data, f_plot, f_data_all_turns=None):
         self.filename_standard = filename_standard
         self.param_dict = param_dict
         self.f_data = f_data
         self.f_plot = f_plot
+        self.f_data_all_turns = f_data_all_turns
 
     def get_param_list(self):
         return list(self.param_dict.keys())
@@ -42,14 +43,23 @@ class data_handler(object):
     def get_plot(self, parameters, log_scale=False):
         return self.f_plot(parameters, log_scale)
 
+    def get_data_all_turns(self, parameters):
+        return self.f_data_all_turns(parameters)
+
 
 ### Data location on EOS
 data_path = "/mnt/volume"
 
 #### DATASET STANDARD ####
 
-mu_list = [0.0, 0.2, -0.2, 1.0, -1.0]
-epsilon_list = [0.0, 1.0, 2.0, 4.0, 16.0, 32.0, 64.0]
+# FULL SET
+# mu_list = [0.0, 0.2, -0.2, 1.0, -1.0]
+# epsilon_list = [0.0, 1.0, 2.0, 4.0, 16.0, 32.0, 64.0]
+
+# REDUCED SET
+mu_list = [0.0, 0.2, 1.0]
+epsilon_list = [0.0, 4.0, 16.0, 32.0, 64.0]
+
 turn_samples = [10, 100, 1000, 10000, 100000]
 
 def eml(epsilon, mu):
@@ -212,6 +222,22 @@ def LI_get_data(parameters):
     return data
 
 
+def LI_get_data_all_turns(parameters):
+    filename = LI_filename_standard(
+        parameters["displacement"], parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    for t in all_turns:
+        sample = f[t]
+        data = np.log10(np.sqrt(
+            np.power(sample["x"][0] - sample["x"][1], 2) +
+            np.power(sample["px"][0] - sample["px"][1], 2) +
+            np.power(sample["y"][0] - sample["y"][1], 2) +
+            np.power(sample["py"][0] - sample["py"][1], 2)
+        ) / f.attrs["displacement"]) / parameters["turns"]
+        yield int(t), data
+
+
 def LI_get_plot(parameters, log_scale=False):
     data = LI_get_data(parameters)
     if log_scale:
@@ -239,7 +265,8 @@ LI_data_handler = data_handler(
     LI_filename_standard,
     LI_param_dict,
     LI_get_data,
-    LI_get_plot
+    LI_get_plot,
+    LI_get_data_all_turns
 )
 
 
@@ -270,6 +297,16 @@ def LEI_get_data(parameters):
     return f[str(parameters["turns"])][str(parameters["grade"])]
 
 
+def LEI_get_data_all_turns(parameters):
+    filename = LEI_filename_standard(
+        parameters["displacement"], parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    for t in all_turns:
+        data = f[t][str(parameters["grade"])][...]
+        yield int(t), data
+
+
 def LEI_get_plot(parameters, log_scale=False):
     data = LEI_get_data(parameters)
     if log_scale:
@@ -297,7 +334,8 @@ LEI_data_handler = data_handler(
     LEI_filename_standard,
     LEI_param_dict,
     LEI_get_data,
-    LEI_get_plot
+    LEI_get_plot,
+    LEI_get_data_all_turns
 )
 
 #### RE ####
@@ -351,6 +389,24 @@ def RE_get_data(parameters):
     return data
 
 
+def RE_get_data_all_turns(parameters):
+    filename0 = init_filename_standard(parameters["epsilon"], parameters["mu"])
+    filename1 = RE_filename_standard(parameters["kicks"], parameters["mu"], parameters["epsilon"])
+    f0 = h5py.File(os.path.join(data_path, filename0), mode="r")
+    f1 = h5py.File(os.path.join(data_path, filename1), mode="r")
+
+    all_turns = list(f1)
+    for t in all_turns:
+        data = np.sqrt(
+            + np.power(f0["coords/x"][...] - f1[t]["x"][...], 2)
+            + np.power(f0["coords/px"][...] - f1[t]["px"][...], 2)
+            + np.power(f0["coords/y"][...] - f1[t]["y"][...], 2)
+            + np.power(f0["coords/py"][...] - f1[t]["py"][...], 2)
+        )
+        yield int(t), data
+
+
+
 def RE_get_plot(parameters, log_scale=False):
     data = RE_get_data(parameters)
     if log_scale:
@@ -378,7 +434,8 @@ RE_data_handler = data_handler(
     RE_filename_standard,
     RE_param_dict,
     RE_get_data,
-    RE_get_plot
+    RE_get_plot,
+    RE_get_data_all_turns
 )
 
 
@@ -437,6 +494,16 @@ def REI_get_data(parameters):
     return f[str(parameters["turns"])][str(parameters["grade"])][...]
 
 
+def REI_get_data_all_turns(parameters):
+    filename1 = REI_filename_standard(
+        parameters["kicks"], parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename1), mode="r")
+    all_turns = list(f)
+    for t in all_turns:
+        data = f[t][str(parameters["grade"])][...]
+        yield int(t), data
+
+
 def REI_get_plot(parameters, log_scale=False):
     data = REI_get_data(parameters)
     if log_scale:
@@ -464,7 +531,8 @@ REI_data_handler = data_handler(
     REI_filename_standard,
     REI_param_dict,
     REI_get_data,
-    REI_get_plot
+    REI_get_plot,
+    REI_get_data_all_turns
 )
 
 #### SALI ####
@@ -490,6 +558,15 @@ def SALI_get_data(parameters):
     with h5py.File(os.path.join(data_path, filename), mode="r") as f:
         data = f[idx][...]
     return data
+
+
+def SALI_get_data_all_turns(parameters):
+    filename = SALI_filename_standard(parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    for t in all_turns:
+        data = f[t][...]
+        yield int(t), data
 
 
 def SALI_get_plot(parameters, log_scale=False):
@@ -518,7 +595,8 @@ SALI_data_handler = data_handler(
     SALI_filename_standard,
     SALI_param_dict,
     SALI_get_data,
-    SALI_get_plot
+    SALI_get_plot,
+    SALI_get_data_all_turns
 )
 
 
@@ -548,6 +626,15 @@ def GALI_get_data(parameters):
     return data
 
 
+def GALI_get_data_all_turns(parameters):
+    filename = GALI_filename_standard(parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    for t in all_turns:
+        data = f[parameters["n_dimensions"]][t][...]
+        yield int(t), data
+
+
 def GALI_get_plot(parameters, log_scale=False):
     data = GALI_get_data(parameters)
     if log_scale:
@@ -574,7 +661,8 @@ GALI_data_handler = data_handler(
     GALI_filename_standard,
     GALI_param_dict,
     GALI_get_data,
-    GALI_get_plot
+    GALI_get_plot,
+    GALI_get_data_all_turns
 )
 
 #### MEGNO ####
@@ -599,6 +687,15 @@ def MEGNO_get_data(parameters):
     idx = str(parameters["turns"])
     with h5py.File(os.path.join(data_path, filename), mode="r") as f:
         data = f[idx][...]
+    return data
+
+
+def MEGNO_get_data_all_turns(parameters):
+    filename = MEGNO_filename_standard(parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    for t in all_turns:
+        data = f[t][...]
     return data
 
 
@@ -629,7 +726,8 @@ MEGNO_data_handler = data_handler(
     MEGNO_filename_standard,
     MEGNO_param_dict,
     MEGNO_get_data,
-    MEGNO_get_plot
+    MEGNO_get_plot,
+    MEGNO_get_data_all_turns
 )
 
 
@@ -662,6 +760,18 @@ def FQ_get_data(parameters):
     return data
 
 
+def FQ_get_data_all_turns(parameters):
+    filename = FQ_filename_standard(parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    for t in all_turns:
+        data = np.sqrt(
+            +np.power(f[t]["tune_x"][0] - f[t]["tune_x"][1], 2)
+            + np.power(f[t]["tune_y"][0] - f[t]["tune_y"][1], 2)
+        )
+        yield 2**int(t), data
+
+
 def FQ_get_plot(parameters, log_scale=False):
     data = FQ_get_data(parameters)
     if log_scale:
@@ -688,7 +798,8 @@ FQ_data_handler = data_handler(
     FQ_filename_standard,
     FQ_param_dict,
     FQ_get_data,
-    FQ_get_plot
+    FQ_get_plot,
+    FQ_get_data_all_turns
 )
 
 

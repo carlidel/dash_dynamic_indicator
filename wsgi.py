@@ -9,7 +9,7 @@ from dash.dependencies import Input, Output, State, MATCH, ALL
 import data_handler as dh
 from data_handler import TUNE_X_data_handler, TUNE_Y_data_handler
 
-from layouts import layout_1, layout_2, layout_3, layout_4
+from layouts import layout_1, layout_2, layout_3, layout_4, layout_5
 
 app = dash.Dash(__name__, external_stylesheets=[
                 dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -846,16 +846,172 @@ def update_frequency_plot(*args):
     return fig
 
 
+@app.callback(
+    [
+        Output({'type': 'fig_main_confusion', 'index': MATCH}, 'figure'),
+        Output({'type': 'fig_advanced_confusion', 'index': MATCH}, 'figure'),
+        Output({'type': 'fig_extra_confusion', 'index': MATCH}, 'figure'),
+        Output({'type': 'fig_thresh_evolution', 'index': MATCH}, 'figure'),
+    ],
+    [
+        Input({'type': 'dropdown_0', 'index': MATCH}, 'value'),     # 0
+        Input({'type': 'dropdown_1', 'index': MATCH}, 'value'),     # 1
+        Input({'type': 'dropdown_2', 'index': MATCH}, 'value'),     # 2
+        Input({'type': 'dropdown_3', 'index': MATCH}, 'value'),     # 3
+        Input({'type': 'dropdown_4', 'index': MATCH}, 'value'),     # 4
+        Input({'type': 'dropdown_5', 'index': MATCH}, 'value'),     # 5
+        Input({'type': 'linked_options', 'index': MATCH}, 'value'), # 6
+        Input({'type': 'input_positive', 'index': MATCH}, 'value'), # 7
+        Input({'type': 'input_negative', 'index': MATCH}, 'value'), # 8
+        Input({'type': 'input_samples', 'index': MATCH}, 'value'),  # 9
+    ],
+    [
+        State({'type': 'main_dropdown', 'index': MATCH}, 'value')   # 10       
+    ]
+)
+def confusion_plot(*args):
+    handler = handler_list[args[10]]
+    param_list = handler.get_param_list()
+    param_dict = {}
+    for i in range(len(param_list)):
+        param_dict[param_list[i]] = args[i]
+    stab_param = {
+        'epsilon': param_dict["epsilon"],
+        'mu': param_dict["mu"],
+        'kick': 'no_kick'
+    }
+    stab_data = dh.stability_data_handler.get_data(stab_param).flatten()
+    ind_data = handler.get_data(param_dict).flatten()
+
+    if "log10" in args[6]:
+        ind_data = np.log10(ind_data)
+    max_ind = np.nanmax(ind_data)
+    min_ind = np.nanmin(ind_data)
+    samples = np.linspace(min_ind, max_ind, args[9]+2)[1:-1]
+
+    tp = np.empty(args[9])
+    tn = np.empty(args[9])
+    fp = np.empty(args[9])
+    fn = np.empty(args[9])
+
+    for i, v in enumerate(samples):
+        if "reverse" in args[6]:
+            tp[i] = np.count_nonzero(stab_data[ind_data >= v] == 10000000)
+            tn[i] = np.count_nonzero(stab_data[ind_data < v] != 10000000)
+            fp[i] = np.count_nonzero(stab_data[ind_data < v] == 10000000)
+            fn[i] = np.count_nonzero(stab_data[ind_data >= v] != 10000000)
+        else:
+            tp[i] = np.count_nonzero(stab_data[ind_data < v] == 10000000)
+            tn[i] = np.count_nonzero(stab_data[ind_data >= v] != 10000000)
+            fp[i] = np.count_nonzero(stab_data[ind_data >= v] == 10000000)
+            fn[i] = np.count_nonzero(stab_data[ind_data < v] != 10000000)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=samples,
+            y=tp,
+            name="True Positive",
+            mode='lines',
+            marker_color="red"
+        ))
+    fig.add_trace(
+        go.Scatter(
+            x=samples,
+            y=tn,
+            name="True Negative",
+            mode='lines',
+            marker_color="orange"
+        ))
+    fig.add_trace(
+        go.Scatter(
+            x=samples,
+            y=fp,
+            name="False Positive",
+            mode='lines',
+            marker_color="blue"
+        ))
+    fig.add_trace(
+        go.Scatter(
+            x=samples,
+            y=fn,
+            name="False Negative",
+            mode='lines',
+            marker_color="cyan"
+        ))
+
+    max_accuracy = np.nanargmax((tp + tn) / (tp + tn + fn + fp))
+    fig.add_vline(samples[max_accuracy])
+
+    fig.update_layout(
+        title="Threshold evaluation",
+        xaxis_title="Threshold position",
+        yaxis_title="Samples"
+    )
+
+    fig_adv = go.Figure()
+    fig_adv.add_trace(
+        go.Scatter(
+            x=samples,
+            y=(tp+tn)/(tp+tn+fp+fn),
+            name="Accuracy",
+            mode='lines'
+        )
+    )
+    fig_adv.add_trace(
+        go.Scatter(
+            x=samples,
+            y=tp/(tp+fp),
+            name="Precision",
+            mode="lines"
+        )
+    )
+    fig_adv.add_trace(
+        go.Scatter(
+            x=samples,
+            y=tp/(tp+fn),
+            name="Sensitivity",
+            mode="lines"
+        )
+    )
+    fig_adv.add_trace(
+        go.Scatter(
+            x=samples,
+            y=tn/(tn+fp),
+            name="Specificity",
+            mode='lines'
+        )
+    )
+
+    fig_adv.update_layout(
+        xaxis_title="Threshold position",
+        yaxis_title="Value"
+    )
+
+    fig.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+    fig_adv.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+    fig.update_layout(hovermode="x")
+    fig_adv.update_layout(hovermode="x")
+
+    return [fig, fig_adv, go.Figure(), go.Figure()]
+
 ################################################################################
 
 @app.callback(
     Output("notification-toast-1", "is_open"),
     [
-        #Input('fig_frequency', 'figure'),
-        #Input('fig_action', 'figure'),
-        #Input({'type': 'figure_diff',
-        #       'index': ALL}, 'figure'),
-        #Input({'type': 'lay_2_figure', 'index': ALL}, 'figure'),
         Input({'type': 'linked_figure', 'index': ALL}, 'figure'),
     ]
 )
@@ -894,6 +1050,18 @@ def update_toast_3(*p):
 )
 def update_toast_4(*p):
     return True
+
+
+@app.callback(
+    Output("notification-toast-5", "is_open"),
+    [
+        Input('fig_main_confusion', 'figure'),
+    ]
+)
+def update_toast_5(*p):
+    return True
+
+
 ################################################################################
 if __name__ == '__main__':
     app.run_server(host="0.0.0.0", port=8080)
