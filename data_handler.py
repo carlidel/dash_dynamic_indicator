@@ -44,7 +44,7 @@ class data_handler(object):
 
 
 ### Data location on EOS
-data_path = "/eos/project/d/da-and-diffusion-studies/DA_Studies/Simulations/Models/dynamic_indicator_analysis/dynamic_indicator_analysis/data"
+data_path = "/mnt/volume"
 
 #### DATASET STANDARD ####
 
