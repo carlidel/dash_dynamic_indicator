@@ -1012,7 +1012,11 @@ def confusion_plot(*args):
             mode='lines'
         )
     )
-
+    fig_adv.add_vline(
+        samples[max_accuracy],
+        annotation_text="Max accuracy",
+        annotation_position="bottom right"
+    )
     fig_adv.update_layout(
         xaxis_title="Threshold position",
         yaxis_title="Value"
@@ -1045,19 +1049,19 @@ def confusion_plot(*args):
     ])
     row3 = html.Tr([
         html.Td("Accuracy"),
-        html.Td("{}%".format(int(accuracy[max_accuracy]*100)))
+        html.Td("{:.2f}%".format((accuracy[max_accuracy]*100)))
     ])
     row2 = html.Tr([
         html.Td("Precision"),
-        html.Td("{}%".format(int(precision[max_accuracy]*100)))
+        html.Td("{:.2f}%".format((precision[max_accuracy]*100)))
     ])
     row4 = html.Tr([
         html.Td("Sensitivity"),
-        html.Td("{}%".format(int(sensitivity[max_accuracy]*100)))
+        html.Td("{:.2f}%".format((sensitivity[max_accuracy]*100)))
     ])
     row5 = html.Tr([
         html.Td("Specificity"),
-        html.Td("{}%".format(int(specificity[max_accuracy]*100)))
+        html.Td("{:.2f}%".format((specificity[max_accuracy]*100)))
     ])
     
     table_body = [html.Tbody([row1, row2, row3, row4, row5])]
