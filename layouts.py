@@ -1286,12 +1286,12 @@ confusion_block = [dbc.Col([
     ]),
     dbc.Row([
         dbc.Col([
-            dcc.Graph(
+            dbc.Table(
                 id={
-                    'type': 'fig_extra_confusion',
+                    'type': 'tab_confusion',
                     'index': i
                 },
-                figure=go.Figure()
+                bordered=True
             )
         ]),
         dbc.Col([
@@ -1313,6 +1313,9 @@ confusion_block = [dbc.Col([
                                             'value': 'log10'},
                                         {'label': ' Reverse Threshold',
                                             'value': 'reverse'},
+                                        {'label': 'Require Full Analysis',
+                                            'value': 'full_scan'
+                                        },
                                     ],
                                     value=[]
                                 ),

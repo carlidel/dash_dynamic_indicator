@@ -44,11 +44,13 @@ class data_handler(object):
         return self.f_plot(parameters, log_scale)
 
     def get_data_all_turns(self, parameters):
+        if self.f_data_all_turns is None:
+            return None
         return self.f_data_all_turns(parameters)
 
 
 ### Data location on EOS
-data_path = "/mnt/volume"
+data_path = "/home/camontan/Insync/carlo.montanari3@studio.unibo.it/OneDriveBiz/projects/dyn_indicator_analysis/data"
 
 #### DATASET STANDARD ####
 
@@ -227,6 +229,7 @@ def LI_get_data_all_turns(parameters):
         parameters["displacement"], parameters["mu"], parameters["epsilon"])
     f = h5py.File(os.path.join(data_path, filename), mode="r")
     all_turns = list(f)
+    all_turns.remove("coords")
     for t in all_turns:
         sample = f[t]
         data = np.log10(np.sqrt(

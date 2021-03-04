@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from dash.dependencies import Input, Output, State, MATCH, ALL
 import data_handler as dh
 from data_handler import TUNE_X_data_handler, TUNE_Y_data_handler
+from plotly.subplots import make_subplots
 
 from layouts import layout_1, layout_2, layout_3, layout_4, layout_5
 
@@ -124,6 +125,28 @@ def display_page(pathname):
             html.Br(),
             layout_4
         ])
+    elif pathname == '/apps/confusion':
+        return html.Div([
+            dbc.Toast(
+                "Plot(s) Updated!",
+                id="notification-toast-5",
+                header="Notification",
+                icon="primary",
+                is_open=False,
+                dismissable=True,
+                duration=4000,
+                # top: 66 positions the toast below the navbar
+                style={"position": "fixed", "top": 5,
+                       "right": 10, "width": 350},
+            ),
+            html.H1("Confusion Dashboard"),
+            html.H3(
+                "General dashboard for visualizing confusion data (true positive, false positive, etc.)."),
+            html.Br(),
+            dcc.Link("Go back to index.", href="/"),
+            html.Br(),
+            layout_5
+        ])
     else:
         return index_layout
 
@@ -163,7 +186,10 @@ handler_list = [
     dh.FQ_data_handler,
     dh.radius_data_handler
 ]
+name_options = ['Stability Time', 'LI', 'LEI', 'RE', 'REI', 'SALI', 'GALI', 'MEGNO', 'Frequency Map', 'Simple radial distance']
+
 ################################################################################
+
 
 #### Option update ####
 
@@ -850,7 +876,7 @@ def update_frequency_plot(*args):
     [
         Output({'type': 'fig_main_confusion', 'index': MATCH}, 'figure'),
         Output({'type': 'fig_advanced_confusion', 'index': MATCH}, 'figure'),
-        Output({'type': 'fig_extra_confusion', 'index': MATCH}, 'figure'),
+        Output({'type': 'tab_confusion', 'index': MATCH}, 'children'),
         Output({'type': 'fig_thresh_evolution', 'index': MATCH}, 'figure'),
     ],
     [
@@ -941,7 +967,6 @@ def confusion_plot(*args):
         ))
 
     max_accuracy = np.nanargmax((tp + tn) / (tp + tn + fn + fp))
-    fig.add_vline(samples[max_accuracy])
 
     fig.update_layout(
         title="Threshold evaluation",
@@ -949,11 +974,16 @@ def confusion_plot(*args):
         yaxis_title="Samples"
     )
 
+    accuracy = (tp+tn)/(tp+tn+fp+fn)
+    precision = tp/(tp+fp)
+    sensitivity = tp/(tp+fn)
+    specificity = tn/(tn+fp)
+
     fig_adv = go.Figure()
     fig_adv.add_trace(
         go.Scatter(
             x=samples,
-            y=(tp+tn)/(tp+tn+fp+fn),
+            y=accuracy,
             name="Accuracy",
             mode='lines'
         )
@@ -961,7 +991,7 @@ def confusion_plot(*args):
     fig_adv.add_trace(
         go.Scatter(
             x=samples,
-            y=tp/(tp+fp),
+            y=precision,
             name="Precision",
             mode="lines"
         )
@@ -969,7 +999,7 @@ def confusion_plot(*args):
     fig_adv.add_trace(
         go.Scatter(
             x=samples,
-            y=tp/(tp+fn),
+            y=sensitivity,
             name="Sensitivity",
             mode="lines"
         )
@@ -977,7 +1007,7 @@ def confusion_plot(*args):
     fig_adv.add_trace(
         go.Scatter(
             x=samples,
-            y=tn/(tn+fp),
+            y=specificity,
             name="Specificity",
             mode='lines'
         )
@@ -1005,7 +1035,107 @@ def confusion_plot(*args):
     fig.update_layout(hovermode="x")
     fig_adv.update_layout(hovermode="x")
 
-    return [fig, fig_adv, go.Figure(), go.Figure()]
+    table_header = [
+    html.Thead(html.Tr([html.Th("Parameter"), html.Th("Value")]))
+    ]
+
+    row1 = html.Tr([
+        html.Td("Best Threshold (accuracy-wise)"), 
+        html.Td("{:2e}".format(samples[max_accuracy]))
+    ])
+    row3 = html.Tr([
+        html.Td("Accuracy"),
+        html.Td("{}%".format(int(accuracy[max_accuracy]*100)))
+    ])
+    row2 = html.Tr([
+        html.Td("Precision"),
+        html.Td("{}%".format(int(precision[max_accuracy]*100)))
+    ])
+    row4 = html.Tr([
+        html.Td("Sensitivity"),
+        html.Td("{}%".format(int(sensitivity[max_accuracy]*100)))
+    ])
+    row5 = html.Tr([
+        html.Td("Specificity"),
+        html.Td("{}%".format(int(specificity[max_accuracy]*100)))
+    ])
+    
+    table_body = [html.Tbody([row1, row2, row3, row4, row5])]
+
+    iterable = handler.get_data_all_turns(param_dict)
+    if iterable is None or 'full_scan' not in args[6]:
+        final_fig = go.Figure()
+    else:
+        times = []
+        thresholds = []
+        accuracies = []
+        for block in iterable:
+            t, ind_data = block
+            ind_data = ind_data.flatten()
+            times.append(t)
+            if "log10" in args[6]:
+                ind_data = np.log10(ind_data)
+            max_ind = np.nanmax(ind_data)
+            min_ind = np.nanmin(ind_data)
+            samples = np.linspace(min_ind, max_ind, args[9]+2)[1:-1]
+
+            for i, v in enumerate(samples):
+                if "reverse" in args[6]:
+                    tp[i] = np.count_nonzero(stab_data[ind_data >= v] == 10000000)
+                    tn[i] = np.count_nonzero(stab_data[ind_data < v] != 10000000)
+                    fp[i] = np.count_nonzero(stab_data[ind_data < v] == 10000000)
+                    fn[i] = np.count_nonzero(stab_data[ind_data >= v] != 10000000)
+                else:
+                    tp[i] = np.count_nonzero(stab_data[ind_data < v] == 10000000)
+                    tn[i] = np.count_nonzero(stab_data[ind_data >= v] != 10000000)
+                    fp[i] = np.count_nonzero(stab_data[ind_data >= v] == 10000000)
+                    fn[i] = np.count_nonzero(stab_data[ind_data < v] != 10000000)
+            accuracy = (tp+tn)/(tp+tn+fp+fn)
+            max_accuracy = np.nanargmax(accuracy)
+            thresholds.append(samples[max_accuracy])
+            accuracies.append(accuracy[max_accuracy])
+
+        thresholds = [x for _, x in sorted(zip(times, thresholds))]
+        accuracies = [x for _, x in sorted(zip(times, accuracies))]
+        times = [x for x in sorted(times)]
+
+        final_fig = make_subplots(specs=[[{"secondary_y": True}]])
+        final_fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=thresholds,
+                name="Best Thresholds (accuracy-wise)",
+                mode="lines"
+            ),
+            secondary_y=False,
+        )
+        final_fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=accuracies,
+                name="Accuracy",
+                mode="lines"
+            ),
+            secondary_y=True,
+        )
+        final_fig.update_layout(legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ))
+        final_fig.update_layout(hovermode="x")
+        final_fig.update_layout(
+            title="Theshold evolution for " + name_options[args[10]])
+        final_fig.update_xaxes(
+            title_text="N turns used for computing indicator",
+            type="log"
+            )
+        final_fig.update_yaxes(title_text="Threshold value", secondary_y=False)
+        final_fig.update_yaxes(title_text="Accuracy value", secondary_y=True)
+
+    return [fig, fig_adv, table_header + table_body, final_fig]
 
 ################################################################################
 
@@ -1055,7 +1185,8 @@ def update_toast_4(*p):
 @app.callback(
     Output("notification-toast-5", "is_open"),
     [
-        Input('fig_main_confusion', 'figure'),
+        Input({'type': 'fig_main_confusion',
+                'index': ALL}, 'figure'),
     ]
 )
 def update_toast_5(*p):
@@ -1064,4 +1195,4 @@ def update_toast_5(*p):
 
 ################################################################################
 if __name__ == '__main__':
-    app.run_server(host="0.0.0.0", port=8080)
+    app.run_server(host="0.0.0.0", port=8080, debug=True)
