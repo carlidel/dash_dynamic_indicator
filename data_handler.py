@@ -632,8 +632,9 @@ def GALI_get_data(parameters):
 def GALI_get_data_all_turns(parameters):
     filename = GALI_filename_standard(parameters["mu"], parameters["epsilon"])
     f = h5py.File(os.path.join(data_path, filename), mode="r")
-    all_turns = list(f)
+    all_turns = list(f[parameters["n_dimensions"]])
     for t in all_turns:
+        print(t)
         data = f[parameters["n_dimensions"]][t][...]
         yield int(t), data
 

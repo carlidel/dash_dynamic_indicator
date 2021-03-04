@@ -907,7 +907,7 @@ def confusion_plot(*args):
         'kick': 'no_kick'
     }
     stab_data = dh.stability_data_handler.get_data(stab_param).flatten()
-    ind_data = handler.get_data(param_dict).flatten()
+    ind_data = np.asarray(handler.get_data(param_dict)).flatten()
 
     if "log10" in args[6]:
         ind_data = np.log10(ind_data)
