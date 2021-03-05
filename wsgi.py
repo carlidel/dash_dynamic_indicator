@@ -22,8 +22,7 @@ application = app.server
 
 
 cache = Cache(app.server, config={
-    'CACHE_TYPE': 'filesystem',
-    'CACHE_DIR': 'cache/'
+    'CACHE_TYPE': 'SimpleCache',
 })
 # For security... let's just clean the cache every 48 hours.
 CACHE_TIMEOUT = 48 * 60 * 60
@@ -1218,16 +1217,4 @@ def update_toast_5(*p):
 
 ################################################################################
 if __name__ == '__main__':
-    try:
-        os.mkdir("cache")
-    except OSError as error:
-        print("Probably the folder already exists...")
-        print(error)
-    try:
-        files = glob.glob('cache/*')
-        for f in files:
-            print("Deleting", f, "at", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-            os.remove(f)
-    except:
-        print("Something went wrong...")
     app.run_server(host="0.0.0.0", port=8080, debug=True)
