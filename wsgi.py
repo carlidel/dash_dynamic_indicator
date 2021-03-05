@@ -9,12 +9,24 @@ from dash.dependencies import Input, Output, State, MATCH, ALL
 import data_handler as dh
 from data_handler import TUNE_X_data_handler, TUNE_Y_data_handler
 from plotly.subplots import make_subplots
+from flask_caching import Cache
+import os
+import glob
+from datetime import datetime
 
 from layouts import layout_1, layout_2, layout_3, layout_4, layout_5
 
 app = dash.Dash(__name__, external_stylesheets=[
                 dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 application = app.server
+
+
+cache = Cache(app.server, config={
+    'CACHE_TYPE': 'filesystem',
+    'CACHE_DIR': 'cache/'
+})
+# For security... let's just clean the cache every 48 hours.
+CACHE_TIMEOUT = 48 * 60 * 60
 
 index_layout = html.Div([
     html.H1("INDEX"),
@@ -217,6 +229,7 @@ name_options = ['Stability Time', 'LI', 'LEI', 'RE', 'REI', 'SALI', 'GALI', 'MEG
     ],
     Input({'type': 'main_dropdown', 'index': MATCH}, 'value')
 )
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def update_dropdown_and_labels(value):
     value = handler_list[value]
     outputs = []
@@ -252,6 +265,7 @@ def update_dropdown_and_labels(value):
     ],
     State({'type': 'main_dropdown', 'index': MATCH}, 'value')
 )
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def update_figure(*args):
     handler = handler_list[args[7]]
     param_list = handler.get_param_list()
@@ -301,6 +315,7 @@ def exe_update_correlation_plot(*args):
     return fig
 
 
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def exe_update_correlation_plot_bis(*args):
     handler_1 = handler_list[args[17]]
     handler_2 = handler_list[args[18]]
@@ -438,6 +453,7 @@ def update_correlation_plot_2(*args):
     ]
 
 
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def exe_update_diff_plot(*args):
     handler_1 = handler_list[args[15]]
     handler_2 = handler_list[args[16]]
@@ -597,6 +613,7 @@ def update_diff_plot_2(*args):
         Input('ytune', 'value'),                # 7
     ]
 )
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def update_action_plot(*args):
     parameters = {
         "mu": args[1],
@@ -692,6 +709,7 @@ def filter_01(x, y):
         State('fig_frequency', 'relayoutData')  # 9
     ]
 )
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def update_frequency_plot(*args):
     parameters = {
         "mu": args[1],
@@ -895,6 +913,7 @@ def update_frequency_plot(*args):
         State({'type': 'main_dropdown', 'index': MATCH}, 'value')   # 10       
     ]
 )
+@cache.memoize(timeout=CACHE_TIMEOUT)
 def confusion_plot(*args):
     handler = handler_list[args[10]]
     param_list = handler.get_param_list()
@@ -1199,4 +1218,16 @@ def update_toast_5(*p):
 
 ################################################################################
 if __name__ == '__main__':
+    try:
+        os.mkdir("cache")
+    except OSError as error:
+        print("Probably the folder already exists...")
+        print(error)
+    try:
+        files = glob.glob('cache/*')
+        for f in files:
+            print("Deleting", f, "at", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            os.remove(f)
+    except:
+        print("Something went wrong...")
     app.run_server(host="0.0.0.0", port=8080, debug=True)

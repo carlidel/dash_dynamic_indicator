@@ -1542,14 +1542,12 @@ confusion_block = [dbc.Col([
 ]
 
 confusion_block_2 = [dbc.Col([
-        dbc.Row(
-            dcc.Graph(
-                id={
-                    "type": "fig_thresh_evolution",
-                            'index': i
-                },
-                figure=go.Figure()
-            )
+        dcc.Graph(
+            id={
+                "type": "fig_thresh_evolution",
+                        'index': i
+            },
+            figure=go.Figure()
         )
     ])
     for i in range(TAB_1_PADDING + TAB_2_PADDING + TAB_3_PADDING, TAB_1_PADDING + TAB_2_PADDING + TAB_3_PADDING + TAB_5_PADDING)
