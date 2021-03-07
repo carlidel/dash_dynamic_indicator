@@ -13,8 +13,11 @@ from flask_caching import Cache
 import os
 import glob
 from datetime import datetime
+from tqdm import tqdm
+import matplotlib.cm
+import scipy.ndimage
 
-from layouts import layout_1, layout_2, layout_3, layout_4, layout_5
+from layouts import layout_1, layout_2, layout_3, layout_4, layout_5, layout_6, layout_7
 
 app = dash.Dash(__name__, external_stylesheets=[
                 dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -39,6 +42,10 @@ index_layout = html.Div([
     dcc.Link('Go to Resonance plots dashboard', href='/apps/resonance'),
     html.Br(),
     dcc.Link('Go to Confusion plots dashboard', href='/apps/confusion'),
+    html.Br(),
+    dcc.Link('Go to Time Evolution dashboard', href='/apps/evolution'),
+    html.Br(),
+    dcc.Link('Go to Convoltuion dashboard', href='/apps/convolution'),
 ])
 
 app.layout = html.Div([
@@ -157,6 +164,50 @@ def display_page(pathname):
             dcc.Link("Go back to index.", href="/"),
             html.Br(),
             layout_5
+        ])
+    elif pathname == '/apps/evolution':
+        return html.Div([
+            dbc.Toast(
+                "Plot(s) Updated!",
+                id="notification-toast-6",
+                header="Notification",
+                icon="primary",
+                is_open=False,
+                dismissable=True,
+                duration=4000,
+                # top: 66 positions the toast below the navbar
+                style={"position": "fixed", "top": 5,
+                       "right": 10, "width": 350},
+            ),
+            html.H1("Evolution Dashboard"),
+            html.H3(
+                "General dashboard for visualizing the evolution of dynamic indicators."),
+            html.Br(),
+            dcc.Link("Go back to index.", href="/"),
+            html.Br(),
+            layout_6
+        ])
+    elif pathname == '/apps/convolution':
+        return html.Div([
+            dbc.Toast(
+                "Plot(s) Updated!",
+                id="notification-toast-7",
+                header="Notification",
+                icon="primary",
+                is_open=False,
+                dismissable=True,
+                duration=4000,
+                # top: 66 positions the toast below the navbar
+                style={"position": "fixed", "top": 5,
+                       "right": 10, "width": 350},
+            ),
+            html.H1("Convolution Dashboard"),
+            html.H3(
+                "General dashboard for visualizing the indicators considering a customizable convolution kernel (average and standard deviation)."),
+            html.Br(),
+            dcc.Link("Go back to index.", href="/"),
+            html.Br(),
+            layout_7
         ])
     else:
         return index_layout
@@ -904,7 +955,7 @@ def update_frequency_plot(*args):
         Input({'type': 'dropdown_4', 'index': MATCH}, 'value'),     # 4
         Input({'type': 'dropdown_5', 'index': MATCH}, 'value'),     # 5
         Input({'type': 'linked_options', 'index': MATCH}, 'value'), # 6
-        Input({'type': 'input_positive', 'index': MATCH}, 'value'), # 7
+        Input({'type': 'stability_time', 'index': MATCH}, 'value'),  # 7
         Input({'type': 'input_negative', 'index': MATCH}, 'value'), # 8
         Input({'type': 'input_samples', 'index': MATCH}, 'value'),  # 9
     ],
@@ -940,15 +991,15 @@ def confusion_plot(*args):
 
     for i, v in enumerate(samples):
         if "reverse" in args[6]:
-            tp[i] = np.count_nonzero(stab_data[ind_data >= v] == 10000000)
-            tn[i] = np.count_nonzero(stab_data[ind_data < v] != 10000000)
-            fp[i] = np.count_nonzero(stab_data[ind_data < v] == 10000000)
-            fn[i] = np.count_nonzero(stab_data[ind_data >= v] != 10000000)
+            tp[i] = np.count_nonzero(stab_data[ind_data >= v] >= args[7])
+            tn[i] = np.count_nonzero(stab_data[ind_data < v] < args[7])
+            fp[i] = np.count_nonzero(stab_data[ind_data < v] >= args[7])
+            fn[i] = np.count_nonzero(stab_data[ind_data >= v] < args[7])
         else:
-            tp[i] = np.count_nonzero(stab_data[ind_data < v] == 10000000)
-            tn[i] = np.count_nonzero(stab_data[ind_data >= v] != 10000000)
-            fp[i] = np.count_nonzero(stab_data[ind_data >= v] == 10000000)
-            fn[i] = np.count_nonzero(stab_data[ind_data < v] != 10000000)
+            tp[i] = np.count_nonzero(stab_data[ind_data < v] >= args[7])
+            tn[i] = np.count_nonzero(stab_data[ind_data >= v] < args[7])
+            fp[i] = np.count_nonzero(stab_data[ind_data >= v] >= args[7])
+            fn[i] = np.count_nonzero(stab_data[ind_data < v] < args[7])
 
     fig = go.Figure()
     fig.add_trace(
@@ -1158,6 +1209,232 @@ def confusion_plot(*args):
         final_fig.update_yaxes(title_text="Accuracy value", secondary_y=True)
 
     return [fig, fig_adv, table_header + table_body, final_fig]
+
+
+@app.callback(
+    [
+        Output({'type': 'fig_evolution', 'index': MATCH}, 'figure'),
+    ],
+    [
+        Input({'type': 'dropdown_0', 'index': MATCH}, 'value'),     # 0
+        Input({'type': 'dropdown_1', 'index': MATCH}, 'value'),     # 1
+        Input({'type': 'dropdown_2', 'index': MATCH}, 'value'),     # 2
+        Input({'type': 'dropdown_3', 'index': MATCH}, 'value'),     # 3
+        Input({'type': 'dropdown_4', 'index': MATCH}, 'value'),     # 4
+        Input({'type': 'dropdown_5', 'index': MATCH}, 'value'),     # 5
+        Input({'type': 'linked_options', 'index': MATCH}, 'value'),  # 6
+        Input({'type': 'min_turns', 'index': MATCH}, 'value'),  # 7
+        Input({'type': 'max_turns', 'index': MATCH}, 'value'),  # 8
+        Input({'type': 'sample_skip', 'index': MATCH}, 'value'),  # 9
+    ],
+    [
+        State({'type': 'main_dropdown', 'index': MATCH}, 'value')   # 10
+    ]
+)
+@cache.memoize(timeout=CACHE_TIMEOUT)
+def evolution_plot(*args):
+    handler = handler_list[args[10]]
+    param_list = handler.get_param_list()
+    param_dict = {}
+    for i in range(len(param_list)):
+        param_dict[param_list[i]] = args[i]
+    stab_param = {
+        'epsilon': param_dict["epsilon"],
+        'mu': param_dict["mu"],
+        'kick': 'no_kick'
+    }
+    stab_data = np.log10(dh.stability_data_handler.get_data(stab_param).flatten())
+    iterable = handler.get_data_all_turns(param_dict)
+    if iterable is None:
+        return [go.Figure()]
+    t_list = []
+    values = []
+    for t, v in iterable:
+        t_list.append(t)
+        values.append(v.flatten())
+
+    values = [x for _, x in sorted(zip(t_list, values))]
+    t_list = [x for x in sorted(t_list)]
+
+    t_list = np.array(t_list)
+    values = np.array(values)
+
+    if "log10" in args[6]:
+        values = np.log10(values)
+
+    cmap = matplotlib.cm.get_cmap('viridis')
+    fig = go.Figure()
+    for i in tqdm(range(0, values.shape[1], int(args[9]))):
+        if "filter" in args[6]:
+            if np.any(np.isnan(values[:,i])):
+                continue
+        color = cmap(stab_data[i]/7)
+        color = 'rgb({},{},{})'.format(
+            int(color[0]*255), int(color[1]*255), int(color[2]*255),)
+        fig.add_trace(
+            go.Scattergl(
+                x=t_list,
+                y=values[:, i],
+                line=dict(
+                    color=color,
+                    width=1.0
+                ),
+                mode='lines+markers',
+                showlegend=False,
+            )
+        )
+    fig.update_xaxes(type="log")
+    fig.update_layout(height=1200)
+    return [fig]
+
+
+@app.callback(
+    [
+        Output({'type': 'conv_avg_figure', 'index': MATCH}, 'figure'),
+        Output({'type': 'conv_std_figure', 'index': MATCH}, 'figure'),
+        Output({'type': 'corr_plot_avg_fig', 'index': MATCH}, 'figure'),
+        Output({'type': 'corr_plot_std_fig', 'index': MATCH}, 'figure'),
+    ],
+    [
+        Input({'type': 'dropdown_0', 'index': MATCH}, 'value'),     # 0
+        Input({'type': 'dropdown_1', 'index': MATCH}, 'value'),     # 1
+        Input({'type': 'dropdown_2', 'index': MATCH}, 'value'),     # 2
+        Input({'type': 'dropdown_3', 'index': MATCH}, 'value'),     # 3
+        Input({'type': 'dropdown_4', 'index': MATCH}, 'value'),     # 4
+        Input({'type': 'dropdown_5', 'index': MATCH}, 'value'),     # 5
+        Input({'type': 'linked_options', 'index': MATCH}, 'value'),  # 6
+        Input({'type': 'kernel_size', 'index': MATCH}, 'value'),  # 7
+        Input({'type': 'x_bins', 'index': MATCH}, 'value'),  # 8
+        Input({'type': 'y_bins', 'index': MATCH}, 'value'),  # 9
+    ],
+    [
+        State({'type': 'main_dropdown', 'index': MATCH}, 'value')   # 10
+    ]
+)
+@cache.memoize(timeout=CACHE_TIMEOUT)
+def convolution_plots(*args):
+    handler = handler_list[args[10]]
+    param_list = handler.get_param_list()
+    param_dict = {}
+    for i in range(len(param_list)):
+        param_dict[param_list[i]] = args[i]
+    stab_param = {
+        'epsilon': param_dict["epsilon"],
+        'mu': param_dict["mu"],
+        'kick': 'no_kick'
+    }
+
+    stab_data = np.log10(
+        dh.stability_data_handler.get_data(stab_param).flatten())
+    ind_data = np.asarray(handler.get_data(param_dict))
+    
+    if 'log10' in args[6]:
+        ind_data = np.log10(ind_data)
+
+    avg_convolution = scipy.ndimage.correlate(
+        ind_data,
+        weights=(np.ones((int(args[7]), int(args[7])))/(args[7]**2)),
+        mode='reflect'
+    )
+    std_convolution = scipy.ndimage.generic_filter(
+        ind_data,
+        lambda x : np.std(x),
+        size=args[7],
+        mode='reflect'
+    )
+
+    fig_img_avg = go.Figure()
+    fig_img_avg.add_trace(go.Heatmap(
+        z=avg_convolution,
+        x=np.linspace(0, 1, 500),
+        y=np.linspace(0, 1, 500),
+        hoverongaps=False,
+        colorscale="Viridis"
+    ))
+    fig_img_avg.update_layout(
+        title="Uniform filter",
+        xaxis_title="X_0",
+        yaxis_title="Y_0"
+    )
+
+    fig_img_std = go.Figure()
+    fig_img_std.add_trace(go.Heatmap(
+        z=std_convolution,
+        x=np.linspace(0, 1, 500),
+        y=np.linspace(0, 1, 500),
+        hoverongaps=False,
+        colorscale="Viridis"
+    ))
+    fig_img_std.update_layout(
+        title="Standard deviation filter",
+        xaxis_title="X_0",
+        yaxis_title="Y_0"
+    )
+    avg_convolution = avg_convolution.flatten()
+    std_convolution = std_convolution.flatten()
+
+    bool_mask = np.logical_and(
+        np.logical_not(np.isnan(stab_data)),
+        np.logical_not(np.isnan(avg_convolution)),
+    )
+    stab_data = stab_data[bool_mask]
+    avg_convolution = avg_convolution[bool_mask]
+    std_convolution = std_convolution[bool_mask]
+
+    histo_avg, xedj_avg, yedj_avg = np.histogram2d(
+        stab_data,
+        avg_convolution,
+        bins=[args[8], args[9]],
+        range=[[stab_data.min(), stab_data.max()], [
+            avg_convolution.min(), avg_convolution.max()]]
+    )
+    histo_avg[histo_avg == 0] = np.nan
+    if "log10_histo" in args[6]:
+        histo_avg = np.log10(histo_avg)
+
+    histo_std, xedj_std, yedj_std = np.histogram2d(
+        stab_data,
+        std_convolution,
+        bins=[args[8], args[9]],
+        range=[[stab_data.min(), stab_data.max()], [
+            std_convolution.min(), std_convolution.max()]]
+    )
+    histo_std[histo_std == 0] = np.nan
+    if "log10_histo" in args[6]:
+        histo_std = np.log10(histo_std)
+
+    fig_histo_avg = go.Figure()
+    fig_histo_avg.add_trace(
+        go.Heatmap(
+            z=np.transpose(histo_avg),
+            x=xedj_avg,
+            y=yedj_avg,
+            hoverongaps=False,
+            colorscale="Viridis",
+        )
+    )
+    fig_histo_avg.update_layout(
+        title="Correlation density plot for uniform filter " +
+            ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]")
+    )
+
+    fig_histo_std = go.Figure()
+    fig_histo_std.add_trace(
+        go.Heatmap(
+            z=np.transpose(histo_std),
+            x=xedj_std,
+            y=yedj_std,
+            hoverongaps=False,
+            colorscale="Viridis",
+        )
+    )
+    fig_histo_std.update_layout(
+        title="Correlation density plot for uniform filter " +
+        ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]")
+    )
+
+    return [fig_img_avg, fig_img_std, fig_histo_avg, fig_histo_std]
+
 
 ################################################################################
 
