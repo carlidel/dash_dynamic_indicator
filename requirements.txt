@@ -23,3 +23,4 @@ six
 Werkzeug
 flask-caching
 tqdm
+matplotlib
