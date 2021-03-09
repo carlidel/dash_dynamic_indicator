@@ -769,6 +769,7 @@ def FQ_get_data_all_turns(parameters):
     f = h5py.File(os.path.join(data_path, filename), mode="r")
     all_turns = list(f)
     for t in all_turns:
+        if len(f[t]["tune_x"]) > 1:
         data = np.sqrt(
             +np.power(f[t]["tune_x"][0] - f[t]["tune_x"][1], 2)
             + np.power(f[t]["tune_y"][0] - f[t]["tune_y"][1], 2)
