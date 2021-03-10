@@ -115,7 +115,7 @@ def display_page(pathname):
             ),
             html.H1("Heatmaps Comparison Dashboard"),
             html.H3(
-                "Choose two similar heatmpas and observe the resulting difference on a third heatmap."),
+                "Choose two similar heatmaps and observe the resulting difference on a third heatmap."),
             html.Br(),
             dcc.Link("Go back to index.", href="/"),
             html.Br(),
@@ -979,6 +979,7 @@ def confusion_plot(*args):
     ind_data = np.asarray(handler.get_data(param_dict)).flatten()
 
     if "log10" in args[6]:
+        ind_data[ind_data == 0] = np.nan
         ind_data = np.log10(ind_data)
     max_ind = np.nanmax(ind_data)
     min_ind = np.nanmin(ind_data)
@@ -1147,6 +1148,7 @@ def confusion_plot(*args):
             ind_data = ind_data.flatten()
             times.append(t)
             if "log10" in args[6]:
+                ind_data[ind_data==0] = np.nan
                 ind_data = np.log10(ind_data)
             max_ind = np.nanmax(ind_data)
             min_ind = np.nanmin(ind_data)
@@ -1259,6 +1261,14 @@ def evolution_plot(*args):
     t_list = np.array(t_list)
     values = np.array(values)
 
+    bool_mask = np.logical_and(
+        t_list >= args[7],
+        t_list <= args[8]
+    )
+
+    t_list = t_list[bool_mask]
+    values = values[bool_mask]
+
     if "log10" in args[6]:
         values = np.log10(values)
 
@@ -1283,15 +1293,36 @@ def evolution_plot(*args):
                 showlegend=False,
             )
         )
+    fig.add_trace(go.Scatter(
+        x=[None],
+        y=[None],
+        name="Stability time [log10]",
+        mode='markers',
+        marker=dict(
+            colorscale='Viridis',
+            showscale=True,
+            cmin=np.nanmin(stab_data),
+            cmax=np.nanmax(stab_data),
+        ),
+        hoverinfo='none'
+    ))
+
     fig.update_xaxes(type="log")
     fig.update_layout(height=1200)
+    fig.update_layout(
+        title="Evolution plot",
+        xaxis_title="Turns executed",
+        yaxis_title="Dynamic indicator value"
+    )
     return [fig]
 
 
 @app.callback(
     [
+        Output({'type': 'linked_stab_figure', 'index': MATCH}, 'figure'),
         Output({'type': 'conv_avg_figure', 'index': MATCH}, 'figure'),
         Output({'type': 'conv_std_figure', 'index': MATCH}, 'figure'),
+        Output({'type': 'corr_plot_standard_fig', 'index': MATCH}, 'figure'),
         Output({'type': 'corr_plot_avg_fig', 'index': MATCH}, 'figure'),
         Output({'type': 'corr_plot_std_fig', 'index': MATCH}, 'figure'),
     ],
@@ -1324,8 +1355,26 @@ def convolution_plots(*args):
         'kick': 'no_kick'
     }
 
-    stab_data = np.log10(
-        dh.stability_data_handler.get_data(stab_param).flatten())
+    stab_data = np.log10(dh.stability_data_handler.get_data(stab_param))
+    
+    fig_just_stab = go.Figure()
+    fig_just_stab.add_trace(
+        go.Heatmap(
+            z=stab_data,
+            x=np.linspace(0, 1, 500),
+            y=np.linspace(0, 1, 500),
+            hoverongaps=False,
+            colorscale="Viridis"
+        )
+    )
+    fig_just_stab.update_layout(
+        title="Stability time [log10 scale]",
+        xaxis_title="X_0",
+        yaxis_title="Y_0"
+    )
+
+    stab_data = stab_data.flatten()
+    
     ind_data = np.asarray(handler.get_data(param_dict))
     
     if 'log10' in args[6]:
@@ -1372,6 +1421,40 @@ def convolution_plots(*args):
     )
     avg_convolution = avg_convolution.flatten()
     std_convolution = std_convolution.flatten()
+    ind_data_flat = ind_data.flatten()
+
+    bool_mask = np.logical_and(
+        np.logical_not(np.isnan(stab_data)),
+        np.logical_not(np.isnan(ind_data_flat))
+    )
+    stab_data_temp = stab_data[bool_mask]
+    ind_data_flat = ind_data_flat[bool_mask]
+    histo_standard, xedj_standard, yedj_standard = np.histogram2d(
+        stab_data_temp,
+        ind_data_flat,
+        bins=[args[8], args[9]],
+        range=[[stab_data_temp.min(), stab_data_temp.max()], [
+            ind_data_flat.min(), ind_data_flat.max()]]
+    )
+    histo_standard[histo_standard == 0] = np.nan
+    if "log10_histo" in args[6]:
+        histo_standard = np.log10(histo_standard)
+    fig_histo_standard = go.Figure()
+    fig_histo_standard.add_trace(
+        go.Heatmap(
+            z=np.transpose(histo_standard),
+            x=xedj_standard,
+            y=yedj_standard,
+            hoverongaps=False,
+            colorscale="Viridis",
+        )
+    )
+    fig_histo_standard.update_layout(
+        title="Correlation density plot for standard data " +
+        ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
+        xaxis_title="Dynamic indicator",
+        yaxis_title="Stability time [log10]"
+    )
 
     bool_mask = np.logical_and(
         np.logical_not(np.isnan(stab_data)),
@@ -1415,7 +1498,9 @@ def convolution_plots(*args):
     )
     fig_histo_avg.update_layout(
         title="Correlation density plot for uniform filter " +
-            ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]")
+        ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
+        xaxis_title="Dynamic indicator",
+        yaxis_title="Stability time [log10]"
     )
 
     fig_histo_std = go.Figure()
@@ -1429,11 +1514,13 @@ def convolution_plots(*args):
         )
     )
     fig_histo_std.update_layout(
-        title="Correlation density plot for uniform filter " +
-        ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]")
+        title="Correlation density plot for standard deviation filter " +
+        ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
+        xaxis_title="Dynamic indicator",
+        yaxis_title="Stability time [log10]"
     )
 
-    return [fig_img_avg, fig_img_std, fig_histo_avg, fig_histo_std]
+    return [fig_just_stab, fig_img_avg, fig_img_std, fig_histo_standard, fig_histo_avg, fig_histo_std]
 
 
 ################################################################################
