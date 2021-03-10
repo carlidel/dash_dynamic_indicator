@@ -764,19 +764,6 @@ def FQ_get_data(parameters):
     return data
 
 
-def FQ_get_data_all_turns(parameters):
-    filename = FQ_filename_standard(parameters["mu"], parameters["epsilon"])
-    f = h5py.File(os.path.join(data_path, filename), mode="r")
-    all_turns = list(f)
-    for t in all_turns:
-        if len(f[t]["tune_x"]) > 1:
-        data = np.sqrt(
-            +np.power(f[t]["tune_x"][0] - f[t]["tune_x"][1], 2)
-            + np.power(f[t]["tune_y"][0] - f[t]["tune_y"][1], 2)
-        )
-        yield 2**int(t), data
-
-
 def FQ_get_plot(parameters, log_scale=False):
     data = FQ_get_data(parameters)
     if log_scale:
@@ -798,6 +785,19 @@ def FQ_get_plot(parameters, log_scale=False):
     )
     return fig
 
+
+def FQ_get_data_all_turns(parameters):
+    filename = FQ_filename_standard(parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    for t in all_turns:
+        if len(f[t]["tune_x"]) > 1:
+            data = np.sqrt(
+                +np.power(f[t]["tune_x"][0] - f[t]["tune_x"][1], 2)
+                + np.power(f[t]["tune_y"][0] - f[t]["tune_y"][1], 2)
+            )
+            yield 2**int(t), data
+            
 
 FQ_data_handler = data_handler(
     FQ_filename_standard,
