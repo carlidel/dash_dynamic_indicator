@@ -1304,7 +1304,7 @@ confusion_block = [dbc.Col([
                         dbc.FormGroup(
                             [
                                 dbc.Label(
-                                    children="Plot options",
+                                    children="Options",
                                 ),
                                 dcc.Checklist(
                                     id={
@@ -1312,11 +1312,11 @@ confusion_block = [dbc.Col([
                                         'index': i
                                     },
                                     options=[
-                                        {'label': ' Log10 scale',
+                                        {'label': ' Execute threshold sampling on a log10space',
                                             'value': 'log10'},
-                                        {'label': ' Reverse Threshold',
+                                        {'label': ' Invert the classification method',
                                             'value': 'reverse'},
-                                        {'label': 'Require Full Analysis',
+                                        {'label': ' Plot a full threshold analysis down below',
                                             'value': 'full_scan'
                                         },
                                     ],
@@ -1854,8 +1854,15 @@ block_7 = [
                     'index': i
                 },
                 figure=go.Figure()
+            ),
+            dcc.Graph(
+                id={
+                    'type': 'linked_stab_figure',
+                    'index': i
+                },
+                figure=go.Figure()
             )
-        ], width=3),
+        ], width=4),
         dbc.Col([
             dcc.Graph(
                 id={
@@ -1871,7 +1878,7 @@ block_7 = [
                 },
                 figure=go.Figure()
             )
-        ], width=6),
+        ], width=5),
         dbc.Col([
             dbc.Row(
                 [
@@ -2114,6 +2121,15 @@ block_7 = [
         ], width=3),
     ]),
     dbc.Row([
+        dbc.Col([
+            dcc.Graph(
+                id={
+                    'type': 'corr_plot_standard_fig',
+                    'index': i
+                },
+                figure=go.Figure()
+            )
+        ]),
         dbc.Col([
             dcc.Graph(
                 id={

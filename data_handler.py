@@ -276,8 +276,8 @@ LI_data_handler = data_handler(
 #### LEI ####
 
 LEI_param_dict = {
-    "grade": [1, 2, 3, 4, 5, 6],
     "turns": turn_samples,
+    "grade": [1, 2, 3, 4, 5, 6],
     "displacement": [1e-12],
     "mu": mu_list,
     "epsilon": epsilon_list
@@ -445,8 +445,8 @@ RE_data_handler = data_handler(
 #### REI ####
 
 REI_param_dict = {
-    "grade": [1, 2, 3, 4, 5, 6],
     "turns": turn_samples,
+    "grade": [1, 2, 3, 4, 5, 6],
     "kicks": ["no_kick", "uniform (1e-12)", "gaussian (1e-12, 1e-13)", "uniform forward only (1e-12)", "gaussian forward only (1e-12, 1e-13)"],
     "mu": mu_list,
     "epsilon": epsilon_list
@@ -606,8 +606,8 @@ SALI_data_handler = data_handler(
 #### GALI ####
 
 GALI_param_dict = {
-    "n_dimensions" : ["gali2", "gali3", "gali4"],
     "turns": turn_samples,
+    "n_dimensions": ["gali2", "gali3", "gali4"],
     "mu": mu_list,
     "epsilon": epsilon_list
 }
@@ -739,7 +739,7 @@ MEGNO_data_handler = data_handler(
 
 
 FQ_param_dict = {
-    "turns": [2**11, 2**12, 2**13, 2**14],
+    "turns": [2**10, 2**11, 2**12, 2**13],
     "mu": mu_list,
     "epsilon": epsilon_list
 }
@@ -755,7 +755,7 @@ def FQ_filename_standard(mu, epsilon):
 
 def FQ_get_data(parameters):
     filename = FQ_filename_standard(parameters["mu"], parameters["epsilon"])
-    idx = str(int(np.log2(parameters["turns"])) - 1)
+    idx = str(int(np.log2(parameters["turns"])))
     with h5py.File(os.path.join(data_path, filename), mode="r") as f:
         data = np.sqrt(
             +np.power(f[idx]["tune_x"][0] - f[idx]["tune_x"][1], 2)
