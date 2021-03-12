@@ -1890,6 +1890,9 @@ block_7 = [
                                         {'label': 'Log scale (indicator value)',
                                             'value': 'log10'
                                          },
+                                         {'label': 'Invert the colorscale in the Heatmaps',
+                                            'value': 'color_invert'
+                                         },
                                         {'label': 'Log scale (histo plots)',
                                             'value': 'log10_histo'
                                          },

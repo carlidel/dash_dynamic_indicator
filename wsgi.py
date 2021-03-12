@@ -1331,14 +1331,15 @@ def convolution_plots(*args):
     if 'log10' in args[6]:
         ind_data = np.log10(ind_data)
 
-    avg_convolution = scipy.ndimage.correlate(
+    avg_convolution = scipy.ndimage.generic_filter(
         ind_data,
-        weights=(np.ones((int(args[7]), int(args[7])))/(args[7]**2)),
+        lambda x: np.nanmean(x),
+        size=args[7],
         mode='reflect'
     )
     std_convolution = scipy.ndimage.generic_filter(
         ind_data,
-        lambda x : np.std(x),
+        lambda x : np.nanstd(x),
         size=args[7],
         mode='reflect'
     )
@@ -1349,7 +1350,8 @@ def convolution_plots(*args):
         x=np.linspace(0, 1, 500),
         y=np.linspace(0, 1, 500),
         hoverongaps=False,
-        colorscale="Viridis"
+        colorscale="Viridis",
+        reversescale=(True if "color_invert" in args[6] else False)
     ))
     fig_img_avg.update_layout(
         title="Uniform filter",
@@ -1363,7 +1365,8 @@ def convolution_plots(*args):
         x=np.linspace(0, 1, 500),
         y=np.linspace(0, 1, 500),
         hoverongaps=False,
-        colorscale="Viridis"
+        colorscale="Viridis",
+        reversescale=(True if "color_invert" in args[6] else False)
     ))
     fig_img_std.update_layout(
         title="Standard deviation filter",
