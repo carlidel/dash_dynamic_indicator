@@ -18,7 +18,7 @@ import matplotlib.cm
 import scipy.ndimage
 from numba import njit, prange
 
-from layouts import layout_1, layout_2, layout_3, layout_4, layout_5, layout_6, layout_7
+from layouts import layout_1, layout_2, layout_3, layout_4, layout_5, layout_6, layout_7, layout_8
 
 app = dash.Dash(__name__, external_stylesheets=[
                 dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -47,6 +47,8 @@ index_layout = html.Div([
     dcc.Link('Go to Time Evolution dashboard', href='/apps/evolution'),
     html.Br(),
     dcc.Link('Go to Convoltuion dashboard', href='/apps/convolution'),
+    html.Br(),
+    dcc.Link('Go to Threshold evolution dashboard', href='/apps/threshold'),
 ])
 
 app.layout = html.Div([
@@ -209,6 +211,28 @@ def display_page(pathname):
             dcc.Link("Go back to index.", href="/"),
             html.Br(),
             layout_7
+        ])
+    elif pathname == '/apps/threshold':
+        return html.Div([
+            dbc.Toast(
+                "Plot(s) Updated!",
+                id="notification-toast-8",
+                header="Notification",
+                icon="primary",
+                is_open=False,
+                dismissable=True,
+                duration=4000,
+                # top: 66 positions the toast below the navbar
+                style={"position": "fixed", "top": 5,
+                       "right": 10, "width": 350},
+            ),
+            html.H1("Threshold evolution Dashboard"),
+            html.H3(
+                "General dashboard for visualizing the variation of the best threshold (accuracy-wise) for a given dynamic indicator, considering the varying number of turns considered for computing it."),
+            html.Br(),
+            dcc.Link("Go back to index.", href="/"),
+            html.Br(),
+            layout_8
         ])
     else:
         return index_layout
@@ -1319,7 +1343,7 @@ def evolution_plot(*args):
 
 
 @njit(parallel=True)
-def avg_convolve(padded_array, result, ks):
+def avg_convolve_core(padded_array, result, ks):
     ks = ks // 2
     for i in prange(len(result)):
         for j in range(len(result[i])):
@@ -1332,8 +1356,17 @@ def avg_convolve(padded_array, result, ks):
     return result
 
 
+def avg_convolve(array, ks):
+    len_pad = ks // 2
+    return avg_convolve_core(
+        np.pad(array, ((len_pad, len_pad), (len_pad, len_pad)), 'reflect'),
+        np.empty_like(array),
+        ks
+    )
+
+
 @njit(parallel=True)
-def std_convolve(padded_array, result, ks):
+def std_convolve_core(padded_array, result, ks):
     ks = ks // 2
     for i in prange(len(result)):
         for j in range(len(result[i])):
@@ -1344,6 +1377,15 @@ def std_convolve(padded_array, result, ks):
                     padded_array[i: i + 1 + ks * 2, j: j + 1 + ks * 2]
                 )
     return result
+
+
+def std_convolve(array, ks):
+    len_pad = ks // 2
+    return std_convolve_core(
+        np.pad(array, ((len_pad, len_pad), (len_pad, len_pad)), 'reflect'),
+        np.empty_like(array),
+        ks
+    )
 
 
 @app.callback(
@@ -1416,20 +1458,8 @@ def convolution_plots(*args):
     if 'log10' in args[6]:
         ind_data = np.log10(ind_data)
     
-    len_pad = args[7] // 2
-    avg_convolution = np.empty_like(ind_data)
-    avg_convolution = avg_convolve(
-        np.pad(ind_data, ((len_pad, len_pad),(len_pad, len_pad)), 'reflect'),
-        avg_convolution,
-        args[7]
-    ) 
-    
-    std_convolution = np.empty_like(ind_data)
-    std_convolution = std_convolve(
-        np.pad(ind_data, ((len_pad, len_pad),(len_pad, len_pad)), 'reflect'),
-        std_convolution,
-        args[7]
-    )
+    avg_convolution = avg_convolve(ind_data, args[7]) 
+    std_convolution = std_convolve(ind_data, args[7]) 
 
     stab_data = stab_data.flatten()
 
@@ -1495,8 +1525,8 @@ def convolution_plots(*args):
     fig_histo_standard.update_layout(
         title="Correlation density plot for standard data " +
         ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
-        xaxis_title="Dynamic indicator",
-        yaxis_title="Stability time [log10]"
+        yaxis_title="Dynamic indicator",
+        xaxis_title="Stability time [log10]"
     )
 
     bool_mask = np.logical_and(
@@ -1542,8 +1572,8 @@ def convolution_plots(*args):
     fig_histo_avg.update_layout(
         title="Correlation density plot for uniform filter " +
         ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
-        xaxis_title="Dynamic indicator",
-        yaxis_title="Stability time [log10]"
+        yaxis_title="Dynamic indicator",
+        xaxis_title="Stability time [log10]"
     )
 
     fig_histo_std = go.Figure()
@@ -1559,8 +1589,8 @@ def convolution_plots(*args):
     fig_histo_std.update_layout(
         title="Correlation density plot for standard deviation filter " +
         ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
-        xaxis_title="Dynamic indicator",
-        yaxis_title="Stability time [log10]"
+        yaxis_title="Dynamic indicator",
+        xaxis_title="Stability time [log10]"
     )
 
     max_avg_ind = np.nanmax(avg_convolution)
@@ -1898,6 +1928,160 @@ def convolution_plots(*args):
 
     return [fig_just_stab, fig_img_avg, fig_img_std, fig_histo_standard, fig_histo_avg, fig_histo_std, fig_conf_main_avg, fig_conf_adv_avg, table_header_avg + table_body_avg, fig_conf_main_std, fig_conf_adv_std, table_header_std + table_body_std]
 
+
+@app.callback(
+    Output({'type': 'fig_combo_confusion', 'index': MATCH}, 'figure'),
+    [
+        Input({'type': 'dropdown_0', 'index': MATCH}, 'value'),     # 0
+        Input({'type': 'dropdown_1', 'index': MATCH}, 'value'),     # 1
+        Input({'type': 'dropdown_2', 'index': MATCH}, 'value'),     # 2
+        Input({'type': 'dropdown_3', 'index': MATCH}, 'value'),     # 3
+        Input({'type': 'dropdown_4', 'index': MATCH}, 'value'),     # 4
+        Input({'type': 'dropdown_5', 'index': MATCH}, 'value'),     # 5
+        Input({'type': 'linked_options', 'index': MATCH}, 'value'),  # 6
+        Input({'type': 'stability_time', 'index': MATCH}, 'value'),  # 7
+        Input({'type': 'input_negative', 'index': MATCH}, 'value'),  # 8
+        Input({'type': 'input_samples', 'index': MATCH}, 'value'),  # 9
+        Input({'type': 'convolution_picker', 'index': MATCH}, 'value'),  # 10
+        Input({'type': 'input_kernel', 'index': MATCH}, 'value'),  # 11
+    ],
+    [
+        State({'type': 'main_dropdown', 'index': MATCH}, 'value')   # 12
+    ]
+)
+@cache.memoize(timeout=CACHE_TIMEOUT)
+def threshold_plots(*args):
+    handler = handler_list[args[12]]
+    param_list = handler.get_param_list()
+    param_dict = {}
+    for i in range(len(param_list)):
+        param_dict[param_list[i]] = args[i]
+    stab_param = {
+        'epsilon': param_dict["epsilon"],
+        'mu': param_dict["mu"],
+        'kick': 'no_kick'
+    }
+    stab_data = dh.stability_data_handler.get_data(stab_param).flatten()
+    tp = np.empty(args[9])
+    tn = np.empty(args[9])
+    fp = np.empty(args[9])
+    fn = np.empty(args[9])
+    iterable = handler.get_data_all_turns(param_dict)
+    if iterable is None:
+        return go.Figure()
+    times = []
+    thresholds = []
+    accuracies = []
+    valid_conditions = []
+    for block in iterable:
+        t, ind_data = block
+        if "avg" in args[10]:
+            ind_data = avg_convolve(ind_data, args[11])
+        elif "std" in args[10]:
+            ind_data = std_convolve(ind_data, args[11])
+        ind_data = ind_data.flatten()
+        times.append(t)
+        if "log10" in args[6]:
+            ind_data[ind_data == 0] = np.nan
+            ind_data = np.log10(ind_data)
+        max_ind = np.nanmax(ind_data)
+        min_ind = np.nanmin(ind_data)
+        samples = np.linspace(min_ind, max_ind, args[9]+2)[1:-1]
+        valid_conditions.append(
+            np.count_nonzero(np.logical_not(np.isnan(ind_data)))
+        )
+        for i, v in enumerate(samples):
+            if "reverse" in args[6]:
+                tp[i] = np.count_nonzero(
+                    stab_data[ind_data >= v] == args[7])
+                tn[i] = np.count_nonzero(
+                    stab_data[ind_data < v] != args[7])
+                fp[i] = np.count_nonzero(
+                    stab_data[ind_data < v] == args[7])
+                fn[i] = np.count_nonzero(
+                    stab_data[ind_data >= v] != args[7])
+            else:
+                tp[i] = np.count_nonzero(
+                    stab_data[ind_data < v] == args[7])
+                tn[i] = np.count_nonzero(
+                    stab_data[ind_data >= v] != args[7])
+                fp[i] = np.count_nonzero(
+                    stab_data[ind_data >= v] == args[7])
+                fn[i] = np.count_nonzero(
+                    stab_data[ind_data < v] != args[7])
+        accuracy = (tp+tn)/(tp+tn+fp+fn)
+        max_accuracy = np.nanargmax(accuracy)
+        thresholds.append(samples[max_accuracy])
+        accuracies.append(accuracy[max_accuracy])
+
+    thresholds = [x for _, x in sorted(zip(times, thresholds))]
+    accuracies = [x for _, x in sorted(zip(times, accuracies))]
+    valid_conditions = [x for _, x in sorted(zip(times, valid_conditions))]
+    times = [x for x in sorted(times)]
+
+    print(thresholds)
+    print(accuracies)
+    final_fig = go.Figure()
+    final_fig.add_trace(
+        go.Scatter(
+            x=times,
+            y=thresholds,
+            name="Best Thresholds (accuracy-wise)",
+            mode="lines"
+        ),
+    )
+    final_fig.add_trace(
+        go.Scatter(
+            x=times,
+            y=accuracies,
+            name="Accuracy",
+            mode="lines",
+            yaxis="y2"
+        ),
+    )
+    final_fig.add_trace(
+        go.Scatter(
+            x=times,
+            y=valid_conditions,
+            name="Valid initial conditions",
+            mode="lines",
+            yaxis="y3"
+        ),
+    )
+    final_fig.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+    final_fig.update_layout(hovermode="x")
+    final_fig.update_layout(
+        title="Theshold evolution for " + name_options[args[12]])
+    final_fig.update_xaxes(
+        title_text="N turns used for computing indicator",
+        type="log"
+    )
+    final_fig.update_layout(
+        xaxis=dict(
+            domain=[0.3, 0.85]
+        ),
+        yaxis=dict(
+            title="Threshold value"
+        ),
+        yaxis2=dict(
+            title="Accuracy value",
+            side="right",
+            overlaying="y",
+        ),
+        yaxis3=dict(
+            title="Valid initial conditions (particles not lost)",
+            side="left",
+            position=0.15,
+            overlaying="y",
+        )
+    )
+    return final_fig
 
 ################################################################################
 

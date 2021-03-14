@@ -17,7 +17,7 @@ TAB_3_PADDING = 4
 TAB_5_PADDING = 4
 TAB_6_PADDING = 2
 TAB_7_PADDING = 2
-TAB_8_PADDING = 2
+TAB_8_PADDING = 6
 
 data_options = [
     {'label': 'Stability Time', 'value': 0},
@@ -2305,4 +2305,284 @@ layout_7 = dbc.Col([
     dummy_block_7[1]
 ])
 
+################################################################################
+
+#### TAB 7 #####################################################################
+
+block_8 = [
+    dbc.Col([
+        dcc.Graph(
+            id={
+                'type': 'fig_combo_confusion',
+                'index': i
+            },
+            figure=go.Figure()
+        ),
+        dbc.Row([
+            dbc.Col(
+                dbc.FormGroup([
+                    dbc.Label(
+                        children="Options",
+                    ),
+                    dcc.Checklist(
+                        id={
+                            'type': 'linked_options',
+                            'index': i
+                        },
+                        options=[
+                            {'label': ' Execute threshold sampling on a log10space',
+                                'value': 'log10'},
+                            {'label': ' Invert the classification method',
+                                'value': 'reverse'},
+                        ],
+                        value=[]
+                    ),
+                ])
+            ),
+            dbc.Col(
+                dbc.FormGroup([
+                    dbc.Label(
+                        id={
+                            'type': 'data_picker',
+                            'index': i
+                        },
+                        children="Data selector",
+                    ),
+                    dcc.Dropdown(
+                        id={
+                            'type': 'main_dropdown',
+                            'index': i
+                        },
+                        options=data_options,
+                        value=0,
+                        multi=False,
+                        clearable=False
+                    ),
+                    dbc.Label(
+                        children="Convolution procedure to apply"
+                    ),
+                    dcc.Dropdown(
+                        id={
+                            'type': 'convolution_picker',
+                            'index': i
+                        },
+                        options=[
+                            {'label': 'Original data (no convolution)', 'value': 'none'},
+                            {'label': 'Pick average value in kernel', 'value': 'avg'},
+                            {'label': 'Pick standard deviation in kernel', 'value': 'std'},
+                        ],
+                        value='none',
+                        multi=False,
+                        clearable=False
+                    ),
+                    dbc.Label(
+                        children="Kernel size (if picked)"
+                    ),
+                    dcc.Input(
+                        id={
+                            'type': "input_kernel",
+                                    'index': i
+                        },
+                        value=7.0,
+                        type="number"
+                    )
+                ])
+            )
+        ]),
+        dbc.Row([
+            dbc.Col(
+                dbc.FormGroup([
+                    dbc.Label(
+                        id={
+                            'type': 'label_0',
+                            'index': i
+                        },
+                        children="parameter_0",
+                    ),
+                    dcc.Dropdown(
+                        id={
+                            'type': 'dropdown_0',
+                            'index': i
+                        },
+                        options=[],
+                        multi=False,
+                        clearable=False
+                    ),
+                ])
+            ),
+            dbc.Col(
+                dbc.FormGroup([
+                    dbc.Label(
+                        id={
+                            'type': 'label_1',
+                            'index': i
+                        },
+                        children="parameter_1",
+                    ),
+                    dcc.Dropdown(
+                        id={
+                            'type': 'dropdown_1',
+                            'index': i
+                        },
+                        options=[],
+                        multi=False,
+                        clearable=False
+                    ),
+                ])
+            ),
+            dbc.Col(
+                dbc.FormGroup([
+                    dbc.Label(
+                        id={
+                            'type': 'label_2',
+                            'index': i
+                        },
+                        children="parameter_2",
+                    ),
+                    dcc.Dropdown(
+                        id={
+                            'type': 'dropdown_2',
+                            'index': i
+                        },
+                        options=[],
+                        multi=False,
+                        clearable=False
+                    ),
+                ])
+            ),
+        ],
+        form=True,
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.FormGroup(
+                        [
+                            dbc.Label(
+                                id={
+                                    'type': 'label_3',
+                                    'index': i
+                                },
+                                children="parameter_3",
+                            ),
+                            dcc.Dropdown(
+                                id={
+                                    'type': 'dropdown_3',
+                                    'index': i
+                                },
+                                options=[],
+                                multi=False,
+                                clearable=False
+                            ),
+                        ]
+                    )
+                ),
+                dbc.Col(
+                    dbc.FormGroup(
+                        [
+                            dbc.Label(
+                                id={
+                                    'type': 'label_4',
+                                    'index': i
+                                },
+                                children="parameter_4",
+                            ),
+                            dcc.Dropdown(
+                                id={
+                                    'type': 'dropdown_4',
+                                    'index': i
+                                },
+                                options=[],
+                                multi=False,
+                                clearable=False
+                            ),
+                        ]
+                    )
+                ),
+                dbc.Col(
+                    dbc.FormGroup(
+                        [
+                            dbc.Label(
+                                id={
+                                    'type': 'label_5',
+                                    'index': i
+                                },
+                                children="parameter_5",
+                            ),
+                            dcc.Dropdown(
+                                id={
+                                    'type': 'dropdown_5',
+                                    'index': i
+                                },
+                                options=[],
+                                multi=False,
+                                clearable=False
+                            ),
+                        ]
+                    )
+                ),
+            ],
+        ),
+        dbc.Row([
+                dbc.Col(
+                    dbc.FormGroup(
+                        [
+                            dbc.Label(
+                                children="N Turns to consider 'stable'",
+                            ),
+                            dcc.Input(
+                                id={
+                                    'type': "stability_time",
+                                    'index': i
+                                },
+                                value=1.0e7,
+                                type="number"
+                            ),
+                            html.Br(),
+                            dbc.Label(
+                                children="placeholder_2",
+                            ),
+                            dcc.Input(
+                                id={
+                                    'type': "input_negative",
+                                    'index': i
+                                },
+                                value=1.0,
+                                type="number"
+                            ),
+                        ]
+                    )
+                ),
+                dbc.Col(
+                    dbc.FormGroup(
+                        [
+                            dbc.Label(
+                                children="N samples",
+                            ),
+                            dcc.Input(
+                                id={
+                                    'type': "input_samples",
+                                    'index': i
+                                },
+                                value=100,
+                                type="number"
+                            ),
+                        ]
+                    )
+                )
+                ])
+    ])
+    for i in range(
+        TAB_1_PADDING+TAB_2_PADDING+TAB_3_PADDING+
+        TAB_5_PADDING+TAB_6_PADDING+TAB_7_PADDING,
+        TAB_1_PADDING+TAB_2_PADDING+TAB_3_PADDING+
+        TAB_5_PADDING+TAB_6_PADDING+TAB_7_PADDING+TAB_8_PADDING
+    )
+]
+ 
+layout_8 = dbc.Col([
+    dbc.Row([block_8[0],block_8[1]]),
+    dbc.Row([block_8[2],block_8[3]]),
+    dbc.Row([block_8[4],block_8[5]]),
+])
 ################################################################################
