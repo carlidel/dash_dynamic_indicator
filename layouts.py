@@ -1894,15 +1894,17 @@ block_7 = [
                                         'index': i
                                     },
                                     options=[
-                                        {'label': 'Log scale (indicator value)',
+                                        {'label': 'Log scale (for visualizing the indicator values and perform the samplings in the conufusion matrix)',
                                             'value': 'log10'
                                          },
                                          {'label': 'Invert the colorscale in the Heatmaps',
                                             'value': 'color_invert'
                                          },
-                                        {'label': 'Log scale (histo plots)',
+                                        {'label': 'Toggle Log scale for the correlation',
                                             'value': 'log10_histo'
                                          },
+                                        {'label': ' Invert the classification method for the confusion matrix',
+                                            'value': 'reverse'},
                                     ],
                                     value=[]
                                 ),
@@ -2080,7 +2082,7 @@ block_7 = [
                     dbc.FormGroup(
                         [
                             dbc.Label(
-                                children="Kernel turns",
+                                children="Kernel size for convolutions",
                             ),
                             dcc.Input(
                                 id={
@@ -2092,7 +2094,7 @@ block_7 = [
                             ),
                             html.Br(),
                             dbc.Label(
-                                children="X Bins (corr plots)",
+                                children="X Bins (correlation plots)",
                             ),
                             dcc.Input(
                                 id={
@@ -2104,7 +2106,7 @@ block_7 = [
                             ),
                             html.Br(),
                             dbc.Label(
-                                children="Y Bins (corr plots)",
+                                children="Y Bins (correlation plots)",
                             ),
                             dcc.Input(
                                 id={
@@ -2113,7 +2115,43 @@ block_7 = [
                                 },
                                 value=25,
                                 type="number"
-                            )
+                            ),
+                            html.Br(),
+                            dbc.Label(
+                                children="N Turns to consider 'stable'",
+                            ),
+                            dcc.Input(
+                                id={
+                                    'type': "stability_time",
+                                    'index': i
+                                },
+                                value=1.0e7,
+                                type="number"
+                            ),
+                            html.Br(),
+                            dbc.Label(
+                                children="placeholder_2",
+                            ),
+                            dcc.Input(
+                                id={
+                                    'type': "input_negative",
+                                    'index': i
+                                },
+                                value=1.0,
+                                type="number"
+                            ),
+                            html.Br(),
+                            dbc.Label(
+                                children="N samples",
+                            ),
+                            dcc.Input(
+                                id={
+                                    'type': "input_samples",
+                                    'index': i
+                                },
+                                value=100,
+                                type="number"
+                            ),
                         ]
                     )
                 )
@@ -2157,11 +2195,114 @@ for i in range(
         TAB_5_PADDING+TAB_6_PADDING+TAB_7_PADDING
 )]
 
+
+extra_block_7 = [
+    dbc.Row([
+        dbc.Col([
+            dcc.Graph(
+                id={
+                    "type": "fig_main_confusion",
+                    'index': i
+                },
+                figure=go.Figure()
+            ),
+            dcc.Graph(
+                id={
+                    'type': "fig_advanced_confusion",
+                    'index': i
+                },
+                figure=go.Figure()
+            ),
+            dbc.Table(
+                id={
+                    'type': 'tab_confusion',
+                    'index': i
+                },
+                bordered=True
+            )
+        ]),
+        dbc.Col([
+            dcc.Graph(
+                id={
+                    "type": "fig_avg_main_confusion",
+                    'index': i
+                },
+                figure=go.Figure()
+            ),
+            dcc.Graph(
+                id={
+                    'type': "fig_avg_advanced_confusion",
+                    'index': i
+                },
+                figure=go.Figure()
+            ),
+            dbc.Table(
+                id={
+                    'type': 'tab_avg_confusion',
+                    'index': i
+                },
+                bordered=True
+            )
+        ]),
+        dbc.Col([
+            dcc.Graph(
+                id={
+                    "type": "fig_std_main_confusion",
+                    'index': i
+                },
+                figure=go.Figure()
+            ),
+            dcc.Graph(
+                id={
+                    'type': "fig_std_advanced_confusion",
+                    'index': i
+                },
+                figure=go.Figure()
+            ),
+            dbc.Table(
+                id={
+                    'type': 'tab_std_confusion',
+                    'index': i
+                },
+                bordered=True
+            )
+        ]),
+    ])
+
+    for i in range(
+        TAB_1_PADDING+TAB_2_PADDING+TAB_3_PADDING +
+            TAB_5_PADDING+TAB_6_PADDING,
+        TAB_1_PADDING+TAB_2_PADDING+TAB_3_PADDING +
+            TAB_5_PADDING+TAB_6_PADDING+TAB_7_PADDING
+)]
+
+
+dummy_block_7 = [html.Div(dbc.Col([
+    dcc.Graph(
+        id={
+            "type": "fig_thresh_evolution",
+            'index': i
+        },
+        figure=go.Figure()
+    )
+]), hidden=True)
+    for i in range(
+    TAB_1_PADDING+TAB_2_PADDING+TAB_3_PADDING +
+    TAB_5_PADDING+TAB_6_PADDING,
+    TAB_1_PADDING+TAB_2_PADDING+TAB_3_PADDING +
+    TAB_5_PADDING+TAB_6_PADDING+TAB_7_PADDING
+)
+]
+
 layout_7 = dbc.Col([
     block_7[0][0],
     block_7[0][1],
+    extra_block_7[0],
+    dummy_block_7[0],
     block_7[1][0],
     block_7[1][1],
+    extra_block_7[1],
+    dummy_block_7[1]
 ])
 
 ################################################################################

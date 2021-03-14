@@ -16,6 +16,7 @@ from datetime import datetime
 from tqdm import tqdm
 import matplotlib.cm
 import scipy.ndimage
+from numba import njit, prange
 
 from layouts import layout_1, layout_2, layout_3, layout_4, layout_5, layout_6, layout_7
 
@@ -1317,6 +1318,34 @@ def evolution_plot(*args):
     return [fig]
 
 
+@njit(parallel=True)
+def avg_convolve(padded_array, result, ks):
+    ks = ks // 2
+    for i in prange(len(result)):
+        for j in range(len(result[i])):
+            if np.isnan(padded_array[i + ks, j + ks]):
+                result[i, j] = np.nan
+            else:
+                result[i, j] = np.nanmean(
+                    padded_array[i: i + 1 + ks * 2, j: j + 1 + ks * 2]
+                )
+    return result
+
+
+@njit(parallel=True)
+def std_convolve(padded_array, result, ks):
+    ks = ks // 2
+    for i in prange(len(result)):
+        for j in range(len(result[i])):
+            if np.isnan(padded_array[i + ks, j + ks]):
+                result[i, j] = np.nan
+            else:
+                result[i, j] = np.nanstd(
+                    padded_array[i: i + 1 + ks * 2, j: j + 1 + ks * 2]
+                )
+    return result
+
+
 @app.callback(
     [
         Output({'type': 'linked_stab_figure', 'index': MATCH}, 'figure'),
@@ -1325,6 +1354,12 @@ def evolution_plot(*args):
         Output({'type': 'corr_plot_standard_fig', 'index': MATCH}, 'figure'),
         Output({'type': 'corr_plot_avg_fig', 'index': MATCH}, 'figure'),
         Output({'type': 'corr_plot_std_fig', 'index': MATCH}, 'figure'),
+        Output({'type': 'fig_avg_main_confusion', 'index': MATCH}, 'figure'),
+        Output({'type': 'fig_avg_advanced_confusion', 'index': MATCH}, 'figure'),
+        Output({'type': 'tab_avg_confusion', 'index': MATCH}, 'children'),
+        Output({'type': 'fig_std_main_confusion', 'index': MATCH}, 'figure'),
+        Output({'type': 'fig_std_advanced_confusion', 'index': MATCH}, 'figure'),
+        Output({'type': 'tab_std_confusion', 'index': MATCH}, 'children'),
     ],
     [
         Input({'type': 'dropdown_0', 'index': MATCH}, 'value'),     # 0
@@ -1337,14 +1372,17 @@ def evolution_plot(*args):
         Input({'type': 'kernel_size', 'index': MATCH}, 'value'),  # 7
         Input({'type': 'x_bins', 'index': MATCH}, 'value'),  # 8
         Input({'type': 'y_bins', 'index': MATCH}, 'value'),  # 9
+        Input({'type': 'stability_time', 'index': MATCH}, 'value'),  # 10
+        Input({'type': 'input_negative', 'index': MATCH}, 'value'),  # 11
+        Input({'type': 'input_samples', 'index': MATCH}, 'value'),  # 12
     ],
     [
-        State({'type': 'main_dropdown', 'index': MATCH}, 'value')   # 10
+        State({'type': 'main_dropdown', 'index': MATCH}, 'value')   # 13
     ]
 )
 @cache.memoize(timeout=CACHE_TIMEOUT)
 def convolution_plots(*args):
-    handler = handler_list[args[10]]
+    handler = handler_list[args[13]]
     param_list = handler.get_param_list()
     param_dict = {}
     for i in range(len(param_list)):
@@ -1372,26 +1410,28 @@ def convolution_plots(*args):
         xaxis_title="X_0",
         yaxis_title="Y_0"
     )
-
-    stab_data = stab_data.flatten()
     
     ind_data = np.asarray(handler.get_data(param_dict))
     
     if 'log10' in args[6]:
         ind_data = np.log10(ind_data)
+    
+    len_pad = args[7] // 2
+    avg_convolution = np.empty_like(ind_data)
+    avg_convolution = avg_convolve(
+        np.pad(ind_data, ((len_pad, len_pad),(len_pad, len_pad)), 'reflect'),
+        avg_convolution,
+        args[7]
+    ) 
+    
+    std_convolution = np.empty_like(ind_data)
+    std_convolution = std_convolve(
+        np.pad(ind_data, ((len_pad, len_pad),(len_pad, len_pad)), 'reflect'),
+        std_convolution,
+        args[7]
+    )
 
-    avg_convolution = scipy.ndimage.generic_filter(
-        ind_data,
-        lambda x: np.nanmean(x),
-        size=args[7],
-        mode='reflect'
-    )
-    std_convolution = scipy.ndimage.generic_filter(
-        ind_data,
-        lambda x : np.nanstd(x),
-        size=args[7],
-        mode='reflect'
-    )
+    stab_data = stab_data.flatten()
 
     fig_img_avg = go.Figure()
     fig_img_avg.add_trace(go.Heatmap(
@@ -1523,7 +1563,340 @@ def convolution_plots(*args):
         yaxis_title="Stability time [log10]"
     )
 
-    return [fig_just_stab, fig_img_avg, fig_img_std, fig_histo_standard, fig_histo_avg, fig_histo_std]
+    max_avg_ind = np.nanmax(avg_convolution)
+    min_avg_ind = np.nanmin(avg_convolution)
+    avg_samples = np.linspace(min_avg_ind, max_avg_ind, args[12])
+    max_std_ind = np.nanmax(std_convolution)
+    min_std_ind = np.nanmin(std_convolution)
+    std_samples = np.linspace(min_std_ind, max_std_ind, args[12])
+    print("avg_samples", avg_samples)
+
+    tp_avg = np.empty(args[12])
+    tn_avg = np.empty(args[12])
+    fp_avg = np.empty(args[12])
+    fn_avg = np.empty(args[12])
+    tp_std = np.empty(args[12])
+    tn_std = np.empty(args[12])
+    fp_std = np.empty(args[12])
+    fn_std = np.empty(args[12])
+
+    stab_threshold = np.log10(args[10])
+    for i, v in enumerate(avg_samples):
+        if "reverse" in args[6]:
+            tp_avg[i] = np.count_nonzero(
+                stab_data[avg_convolution >= v] >= stab_threshold
+            )
+            tn_avg[i] = np.count_nonzero(
+                stab_data[avg_convolution < v] < stab_threshold
+            )
+            fp_avg[i] = np.count_nonzero(
+                stab_data[avg_convolution >= v] < stab_threshold
+            )
+            fn_avg[i] = np.count_nonzero(
+                stab_data[avg_convolution < v] >= stab_threshold
+            )
+        else:
+            tp_avg[i] = np.count_nonzero(
+                stab_data[avg_convolution < v] >= stab_threshold
+            )
+            tn_avg[i] = np.count_nonzero(
+                stab_data[avg_convolution >= v] < stab_threshold
+            )
+            fp_avg[i] = np.count_nonzero(
+                stab_data[avg_convolution < v] < stab_threshold
+            )
+            fn_avg[i] = np.count_nonzero(
+                stab_data[avg_convolution >= v] >= stab_threshold
+            )
+    for i, v in enumerate(std_samples):
+        if "reverse" in args[6]:
+            tp_std[i] = np.count_nonzero(
+                stab_data[std_convolution >= v] >= stab_threshold
+            )
+            tn_std[i] = np.count_nonzero(
+                stab_data[std_convolution < v] < stab_threshold
+            )
+            fp_std[i] = np.count_nonzero(
+                stab_data[std_convolution >= v] < stab_threshold
+            )
+            fn_std[i] = np.count_nonzero(
+                stab_data[std_convolution < v] >= stab_threshold
+            )
+        else:
+            tp_std[i] = np.count_nonzero(
+                stab_data[std_convolution < v] >= stab_threshold
+            )
+            tn_std[i] = np.count_nonzero(
+                stab_data[std_convolution >= v] < stab_threshold
+            )
+            fp_std[i] = np.count_nonzero(
+                stab_data[std_convolution < v] < stab_threshold
+            )
+            fn_std[i] = np.count_nonzero(
+                stab_data[std_convolution >= v] >= stab_threshold
+            )
+
+    fig_conf_main_avg = go.Figure()
+    fig_conf_main_avg.add_trace(
+        go.Scatter(
+            x=avg_samples,
+            y=tp_avg,
+            name="True Positive",
+            mode='lines',
+            marker_color="red"
+        ))
+    fig_conf_main_avg.add_trace(
+        go.Scatter(
+            x=avg_samples,
+            y=tn_avg,
+            name="True Negative",
+            mode='lines',
+            marker_color="orange"
+        ))
+    fig_conf_main_avg.add_trace(
+        go.Scatter(
+            x=avg_samples,
+            y=fp_avg,
+            name="False Positive",
+            mode='lines',
+            marker_color="blue"
+        ))
+    fig_conf_main_avg.add_trace(
+        go.Scatter(
+            x=avg_samples,
+            y=fn_avg,
+            name="False Negative",
+            mode='lines',
+            marker_color="cyan"
+        ))
+    fig_conf_main_avg.update_layout(
+        title="Threshold evaluation (average convolution)",
+        xaxis_title="Threshold position",
+        yaxis_title="Samples"
+    )
+    fig_conf_main_avg.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+    fig_conf_main_avg.update_layout(hovermode="x")
+
+    fig_conf_main_std = go.Figure()
+    fig_conf_main_std.add_trace(
+        go.Scatter(
+            x=std_samples,
+            y=tp_std,
+            name="True Positive",
+            mode='lines',
+            marker_color="red"
+        ))
+    fig_conf_main_std.add_trace(
+        go.Scatter(
+            x=std_samples,
+            y=tn_std,
+            name="True Negative",
+            mode='lines',
+            marker_color="orange"
+        ))
+    fig_conf_main_std.add_trace(
+        go.Scatter(
+            x=std_samples,
+            y=fp_std,
+            name="False Positive",
+            mode='lines',
+            marker_color="blue"
+        ))
+    fig_conf_main_std.add_trace(
+        go.Scatter(
+            x=std_samples,
+            y=fn_std,
+            name="False Negative",
+            mode='lines',
+            marker_color="cyan"
+        ))
+    fig_conf_main_std.update_layout(
+        title="Threshold evaluation (standard deviation convolution)",
+        xaxis_title="Threshold position",
+        yaxis_title="Samples"
+    )
+    fig_conf_main_std.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+    fig_conf_main_std.update_layout(hovermode="x")
+
+    accuracy_avg = (tp_avg+tn_avg)/(tp_avg+tn_avg+fp_avg+fn_avg)
+    accuracy_max_avg = np.argmax(accuracy_avg)
+    precision_avg = tp_avg/(tp_avg+fp_avg)
+    sensitivity_avg = tp_avg/(tp_avg+fn_avg)
+    specificity_avg = tn_avg/(tn_avg+fp_avg)
+
+    accuracy_std = (tp_std+tn_std)/(tp_std+tn_std+fp_std+fn_std)
+    accuracy_max_std = np.argmax(accuracy_std)
+    precision_std = tp_std/(tp_std+fp_std)
+    sensitivity_std = tp_std/(tp_std+fn_std)
+    specificity_std = tn_std/(tn_std+fp_std)
+
+    fig_conf_adv_avg = go.Figure()
+    fig_conf_adv_avg.add_trace(
+        go.Scatter(
+            x=avg_samples,
+            y=accuracy_avg,
+            name="Accuracy",
+            mode='lines'
+        )
+    )
+    fig_conf_adv_avg.add_trace(
+        go.Scatter(
+            x=avg_samples,
+            y=precision_avg,
+            name="Precision",
+            mode="lines"
+        )
+    )
+    fig_conf_adv_avg.add_trace(
+        go.Scatter(
+            x=avg_samples,
+            y=sensitivity_avg,
+            name="Sensitivity",
+            mode="lines"
+        )
+    )
+    fig_conf_adv_avg.add_trace(
+        go.Scatter(
+            x=avg_samples,
+            y=specificity_avg,
+            name="Specificity",
+            mode='lines'
+        )
+    )
+    fig_conf_adv_avg.add_vline(
+        avg_samples[accuracy_max_avg],
+        annotation_text="Max accuracy",
+        annotation_position="bottom right"
+    )
+    fig_conf_adv_avg.update_layout(
+        xaxis_title="Threshold position",
+        yaxis_title="Value"
+    )
+    fig_conf_adv_avg.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+    fig_conf_adv_avg.update_layout(hovermode="x")
+
+    fig_conf_adv_std = go.Figure()
+    fig_conf_adv_std.add_trace(
+        go.Scatter(
+            x=std_samples,
+            y=accuracy_std,
+            name="Accuracy",
+            mode='lines'
+        )
+    )
+    fig_conf_adv_std.add_trace(
+        go.Scatter(
+            x=std_samples,
+            y=precision_std,
+            name="Precision",
+            mode="lines"
+        )
+    )
+    fig_conf_adv_std.add_trace(
+        go.Scatter(
+            x=std_samples,
+            y=sensitivity_std,
+            name="Sensitivity",
+            mode="lines"
+        )
+    )
+    fig_conf_adv_std.add_trace(
+        go.Scatter(
+            x=std_samples,
+            y=specificity_std,
+            name="Specificity",
+            mode='lines'
+        )
+    )
+    fig_conf_adv_std.add_vline(
+        std_samples[accuracy_max_std],
+        annotation_text="Max accuracy",
+        annotation_position="bottom right"
+    )
+    fig_conf_adv_std.update_layout(
+        xaxis_title="Threshold position",
+        yaxis_title="Value"
+    )
+    fig_conf_adv_std.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+    fig_conf_adv_std.update_layout(hovermode="x")
+
+    table_header_avg = [
+        html.Thead(html.Tr([html.Th("Parameter"), html.Th("Value")]))
+    ]
+    row1_avg = html.Tr([
+        html.Td("Best Threshold (accuracy-wise)"),
+        html.Td("{:2e}".format(avg_samples[accuracy_max_avg]))
+    ])
+    row3_avg = html.Tr([
+        html.Td("Accuracy"),
+        html.Td("{:.2f}%".format((accuracy_avg[accuracy_max_avg]*100)))
+    ])
+    row2_avg = html.Tr([
+        html.Td("Precision"),
+        html.Td("{:.2f}%".format((precision_avg[accuracy_max_avg]*100)))
+    ])
+    row4_avg = html.Tr([
+        html.Td("Sensitivity"),
+        html.Td("{:.2f}%".format((sensitivity_avg[accuracy_max_avg]*100)))
+    ])
+    row5_avg = html.Tr([
+        html.Td("Specificity"),
+        html.Td("{:.2f}%".format((specificity_avg[accuracy_max_avg]*100)))
+    ])
+    table_body_avg = [html.Tbody(
+        [row1_avg, row2_avg, row3_avg, row4_avg, row5_avg])]
+
+    table_header_std = [
+        html.Thead(html.Tr([html.Th("Parameter"), html.Th("Value")]))
+    ]
+    row1_std = html.Tr([
+        html.Td("Best Threshold (accuracy-wise)"),
+        html.Td("{:2e}".format(std_samples[accuracy_max_std]))
+    ])
+    row3_std = html.Tr([
+        html.Td("Accuracy"),
+        html.Td("{:.2f}%".format((accuracy_std[accuracy_max_std]*100)))
+    ])
+    row2_std = html.Tr([
+        html.Td("Precision"),
+        html.Td("{:.2f}%".format((precision_std[accuracy_max_std]*100)))
+    ])
+    row4_std = html.Tr([
+        html.Td("Sensitivity"),
+        html.Td("{:.2f}%".format((sensitivity_std[accuracy_max_std]*100)))
+    ])
+    row5_std = html.Tr([
+        html.Td("Specificity"),
+        html.Td("{:.2f}%".format((specificity_std[accuracy_max_std]*100)))
+    ])
+    table_body_std = [html.Tbody(
+        [row1_std, row2_std, row3_std, row4_std, row5_std])]
+
+    return [fig_just_stab, fig_img_avg, fig_img_std, fig_histo_standard, fig_histo_avg, fig_histo_std, fig_conf_main_avg, fig_conf_adv_avg, table_header_avg + table_body_avg, fig_conf_main_std, fig_conf_adv_std, table_header_std + table_body_std]
 
 
 ################################################################################

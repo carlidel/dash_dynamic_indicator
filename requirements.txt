@@ -25,3 +25,4 @@ flask-caching
 tqdm
 matplotlib
 scipy
+numba
