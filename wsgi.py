@@ -1285,38 +1285,30 @@ def evolution_plot(*args):
     t_list = np.array(t_list)
     values = np.array(values)
 
-    bool_mask = np.logical_and(
-        t_list >= args[7],
-        t_list <= args[8]
-    )
-
-    t_list = t_list[bool_mask]
-    values = values[bool_mask]
-
     if "log10" in args[6]:
         values = np.log10(values)
 
     cmap = matplotlib.cm.get_cmap('viridis')
     fig = go.Figure()
+    min_lim = -np.inf if args[7] == 0.0 else np.log10(args[7])
+    max_lim = np.log10(args[8])
     for i in range(0, values.shape[1], int(args[9])):
-        if "filter" in args[6]:
-            if stab_data[i] < args[7] or stab_data[i] > args[8]:
-                continue
-        color = cmap(stab_data[i]/7)
-        color = 'rgb({},{},{})'.format(
-            int(color[0]*255), int(color[1]*255), int(color[2]*255),)
-        fig.add_trace(
-            go.Scattergl(
-                x=t_list,
-                y=values[:, i],
-                line=dict(
-                    color=color,
-                    width=1.0
-                ),
-                mode='lines+markers',
-                showlegend=False,
+        if "filter" not in args[6] or not (stab_data[i] < min_lim or stab_data[i] > max_lim):        
+            color = cmap(stab_data[i]/7)
+            color = 'rgb({},{},{})'.format(
+                int(color[0]*255), int(color[1]*255), int(color[2]*255),)
+            fig.add_trace(
+                go.Scattergl(
+                    x=t_list,
+                    y=values[:, i],
+                    line=dict(
+                        color=color,
+                        width=1.0
+                    ),
+                    mode='lines+markers',
+                    showlegend=False,
+                )
             )
-        )
     fig.add_trace(go.Scatter(
         x=[None],
         y=[None],
@@ -1334,7 +1326,7 @@ def evolution_plot(*args):
     fig.update_xaxes(type="log")
     fig.update_layout(height=1200)
     fig.update_layout(
-        title="Evolution plot",
+        title="PERCHÉ NON FUNZIONI???",
         xaxis_title="Turns executed",
         yaxis_title="Dynamic indicator value"
     )
