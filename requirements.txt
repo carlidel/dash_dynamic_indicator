@@ -22,7 +22,6 @@ retrying
 six
 Werkzeug
 flask-caching
-tqdm
 matplotlib
 scipy
 numba

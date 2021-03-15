@@ -13,7 +13,6 @@ from flask_caching import Cache
 import os
 import glob
 from datetime import datetime
-from tqdm import tqdm
 import matplotlib.cm
 import scipy.ndimage
 from numba import njit, prange
@@ -1299,7 +1298,7 @@ def evolution_plot(*args):
 
     cmap = matplotlib.cm.get_cmap('viridis')
     fig = go.Figure()
-    for i in tqdm(range(0, values.shape[1], int(args[9]))):
+    for i in range(0, values.shape[1], int(args[9])):
         if "filter" in args[6]:
             if stab_data[i] < args[7] or stab_data[i] > args[8]:
                 continue
