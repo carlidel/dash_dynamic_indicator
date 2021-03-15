@@ -46,7 +46,7 @@ index_layout = html.Div([
     html.Br(),
     dcc.Link('Go to Time Evolution dashboard', href='/apps/evolution'),
     html.Br(),
-    dcc.Link('Go to Convoltuion dashboard', href='/apps/convolution'),
+    dcc.Link('Go to Convolution dashboard', href='/apps/convolution'),
     html.Br(),
     dcc.Link('Go to Threshold evolution dashboard', href='/apps/threshold'),
 ])
@@ -1301,7 +1301,7 @@ def evolution_plot(*args):
     fig = go.Figure()
     for i in tqdm(range(0, values.shape[1], int(args[9]))):
         if "filter" in args[6]:
-            if np.any(np.isnan(values[:,i])):
+            if stab_data[i] < args[7] or stab_data[i] > args[8]:
                 continue
         color = cmap(stab_data[i]/7)
         color = 'rgb({},{},{})'.format(

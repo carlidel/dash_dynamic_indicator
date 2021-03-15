@@ -1606,7 +1606,7 @@ block_6 = [dbc.Row([
                                         'index': i
                                     },
                                     options=[
-                                        {'label': 'Filter unstable particles',
+                                        {'label': 'Filter the initial conditions (with the parameters set below)',
                                             'value': 'filter'
                                          },
                                         {'label': 'Log scale (indicator value)',
@@ -1789,7 +1789,7 @@ block_6 = [dbc.Row([
                     dbc.FormGroup(
                         [
                             dbc.Label(
-                                children="Min turns to visualize",
+                                children="Min stability time to visualize",
                             ),
                             dcc.Input(
                                 id={
@@ -1801,7 +1801,7 @@ block_6 = [dbc.Row([
                             ),
                             html.Br(),
                             dbc.Label(
-                                children="Max turns to visualize",
+                                children="Max stability time to visualize",
                             ),
                             dcc.Input(
                                 id={
