@@ -191,6 +191,108 @@ stability_data_handler = data_handler(
 )
 
 
+#### EVOLVING RADIUS ####
+
+EVO_RAD_param_dict = {
+    "turns": [0] + turn_samples,
+    "mu": mu_list,
+    "epsilon": epsilon_list
+}
+
+
+def EVO_RAD_filename_standard(mu, epsilon):
+    return (
+        "henon_4d_displacement_"
+        + eml(epsilon, mu)
+        + "id_basic"
+        + "_subid_{}".format(LI_param_dict["displacement"][0])
+        + ".hdf5"
+    )
+
+
+def EVO_RAD_get_data(parameters):
+    filename = EVO_RAD_filename_standard(
+        parameters["mu"], parameters["epsilon"])
+    if parameters["turns"] == 0:
+        idx = "coords"
+        with h5py.File(os.path.join(data_path, filename), mode="r") as f:
+            sample = f[idx]
+            data = np.sqrt(
+                np.power(sample["x"][0], 2) +
+                np.power(sample["px"][0], 2) +
+                np.power(sample["y"][0], 2) +
+                np.power(sample["py"][0], 2)
+            )
+        return data
+    idx = str(parameters["turns"])
+    with h5py.File(os.path.join(data_path, filename), mode="r") as f:
+        sample = f[idx]
+        data = np.sqrt(
+            np.power(sample["x"][0], 2) +
+            np.power(sample["px"][0], 2) +
+            np.power(sample["y"][0], 2) +
+            np.power(sample["py"][0], 2)
+        )
+    return data
+
+
+def EVO_RAD_get_data_all_turns(parameters):
+    filename = EVO_RAD_filename_standard(
+        parameters["mu"], parameters["epsilon"])
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    all_turns.remove("coords")
+    sample = f["coords"]
+    data = np.sqrt(
+        np.power(sample["x"][0], 2) +
+        np.power(sample["px"][0], 2) +
+        np.power(sample["y"][0], 2) +
+        np.power(sample["py"][0], 2)
+    )
+    yield 1, data # so that we do not have broken log scales for the number of turns
+    for t in all_turns:
+        sample = f[t]
+        data = np.sqrt(
+            np.power(sample["x"][0], 2) +
+            np.power(sample["px"][0], 2) +
+            np.power(sample["y"][0], 2) +
+            np.power(sample["py"][0], 2)
+        )
+        yield int(t), data
+
+
+def EVO_RAD_get_plot(parameters, log_scale=False):
+    data = EVO_RAD_get_data(parameters)
+    if log_scale:
+        data = np.log10(data)
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=data,
+            x=np.linspace(0, 1, 500),
+            y=np.linspace(0, 1, 500),
+            hoverongaps=False,
+            colorscale="Viridis",
+            reversescale=True
+        )
+    )
+    fig.update_layout(
+        title="Radial distance " +
+        (" [linear scale]" if not log_scale else " [log10 scale]"),
+        xaxis_title="X_0",
+        yaxis_title="Y_0"
+    )
+    return fig
+
+
+EVO_RAD_data_handler = data_handler(
+    EVO_RAD_filename_standard,
+    EVO_RAD_param_dict,
+    EVO_RAD_get_data,
+    EVO_RAD_get_plot,
+    EVO_RAD_get_data_all_turns
+)
+
+
 #### LI ####
 
 LI_param_dict = {

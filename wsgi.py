@@ -258,7 +258,8 @@ data_options = [
     {'label': 'GALI', 'value': 6},
     {'label': 'MEGNO', 'value': 7},
     {'label': 'Frequency Map', 'value': 8},
-    {'label': 'Simple radial distance', 'value': 9}
+    {'label': 'Simple radial distance', 'value': 9},
+    {'label': 'Radial distance', 'value': 10}
 ]
 handler_list = [
     dh.stability_data_handler,
@@ -270,9 +271,10 @@ handler_list = [
     dh.GALI_data_handler,
     dh.MEGNO_data_handler,
     dh.FQ_data_handler,
-    dh.radius_data_handler
+    dh.radius_data_handler,
+    dh.EVO_RAD_data_handler
 ]
-name_options = ['Stability Time', 'LI', 'LEI', 'RE', 'REI', 'SALI', 'GALI', 'MEGNO', 'Frequency Map', 'Simple radial distance']
+name_options = ['Stability Time', 'LI', 'LEI', 'RE', 'REI', 'SALI', 'GALI', 'MEGNO', 'Frequency Map', 'Simple radial distance', 'Radial distance']
 
 ################################################################################
 

@@ -29,7 +29,8 @@ data_options = [
     {'label': 'GALI', 'value': 6},
     {'label': 'MEGNO', 'value': 7},
     {'label': 'Frequency Map', 'value': 8},
-    {'label': 'Simple radial distance', 'value': 9}
+    {'label': 'Simple radial distance', 'value': 9},
+    {'label': 'Radial distance', 'value': 10}
 ]
 
 ##### TAB1 LAYOUT ##############################################################
