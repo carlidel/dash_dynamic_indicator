@@ -402,6 +402,7 @@ def exe_update_correlation_plot_bis(*args):
         param_dict_1[param_list_1[i]] = args[i]
     data_1 = handler_1.get_data(param_dict_1)
     if 'log10' in args[6]:
+        data_1[data_1 == 0] = np.nan
         data_1 = np.log10(data_1)
 
     param_list_2 = handler_2.get_param_list()
@@ -410,6 +411,7 @@ def exe_update_correlation_plot_bis(*args):
         param_dict_2[param_list_2[i]] = args[i + 7]
     data_2 = handler_2.get_data(param_dict_2)
     if 'log10' in args[13]:
+        data_2[data_2 == 0] = np.nan
         data_2 = np.log10(data_2)
 
     # make plot

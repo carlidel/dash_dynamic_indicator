@@ -405,7 +405,7 @@ def LEI_filename_standard(displacement, mu, epsilon):
 def LEI_get_data(parameters):
     filename = LEI_filename_standard(parameters["displacement"], parameters["mu"], parameters["epsilon"])
     f = h5py.File(os.path.join(data_path, filename), mode="r")
-    return f[str(parameters["turns"])][str(parameters["grade"])]
+    return f[str(parameters["turns"])][str(parameters["grade"])][...]
 
 
 def LEI_get_data_all_turns(parameters):
@@ -806,9 +806,10 @@ def MEGNO_get_data_all_turns(parameters):
     filename = MEGNO_filename_standard(parameters["mu"], parameters["epsilon"])
     f = h5py.File(os.path.join(data_path, filename), mode="r")
     all_turns = list(f)
+    all_turns.remove("coords")
     for t in all_turns:
         data = f[t][...]
-    return data
+        yield int(t), data
 
 
 def MEGNO_get_plot(parameters, log_scale=False):
