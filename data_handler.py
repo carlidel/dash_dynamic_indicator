@@ -213,15 +213,18 @@ def EVO_RAD_filename_standard(mu, epsilon):
 def EVO_RAD_get_data(parameters):
     filename = EVO_RAD_filename_standard(
         parameters["mu"], parameters["epsilon"])
+    filename0 = init_filename_standard(
+        parameters["epsilon"], parameters["mu"])
+    f0 = h5py.File(os.path.join(data_path, filename0), mode="r")
     if parameters["turns"] == 0:
         idx = "coords"
         with h5py.File(os.path.join(data_path, filename), mode="r") as f:
-            sample = f[idx]
+            sample = f0[idx]
             data = np.sqrt(
-                np.power(sample["x"][0], 2) +
-                np.power(sample["px"][0], 2) +
-                np.power(sample["y"][0], 2) +
-                np.power(sample["py"][0], 2)
+                np.power(sample["x"][...], 2) +
+                np.power(sample["px"][...], 2) +
+                np.power(sample["y"][...], 2) +
+                np.power(sample["py"][...], 2)
             )
         return data
     idx = str(parameters["turns"])
@@ -239,15 +242,18 @@ def EVO_RAD_get_data(parameters):
 def EVO_RAD_get_data_all_turns(parameters):
     filename = EVO_RAD_filename_standard(
         parameters["mu"], parameters["epsilon"])
+    filename0 = init_filename_standard(
+        parameters["epsilon"], parameters["mu"])
+    f0 = h5py.File(os.path.join(data_path, filename0), mode="r")   
     f = h5py.File(os.path.join(data_path, filename), mode="r")
     all_turns = list(f)
     all_turns.remove("coords")
-    sample = f["coords"]
+    sample = f0["coords"]
     data = np.sqrt(
-        np.power(sample["x"][0], 2) +
-        np.power(sample["px"][0], 2) +
-        np.power(sample["y"][0], 2) +
-        np.power(sample["py"][0], 2)
+        np.power(sample["x"][...], 2) +
+        np.power(sample["px"][...], 2) +
+        np.power(sample["y"][...], 2) +
+        np.power(sample["py"][...], 2)
     )
     yield 1, data # so that we do not have broken log scales for the number of turns
     for t in all_turns:

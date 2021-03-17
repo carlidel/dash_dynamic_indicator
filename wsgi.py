@@ -1328,7 +1328,7 @@ def evolution_plot(*args):
     fig.update_xaxes(type="log")
     fig.update_layout(height=1200)
     fig.update_layout(
-        title="PERCHÉ NON FUNZIONI???",
+        title="Evolution plot",
         xaxis_title="Turns executed",
         yaxis_title="Dynamic indicator value"
     )

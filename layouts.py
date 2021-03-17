@@ -1821,7 +1821,7 @@ block_6 = [dbc.Row([
                                     'type': "sample_skip",
                                     'index': i
                                 },
-                                value=101,
+                                value=201,
                                 type="number"
                             ),
                         ]
