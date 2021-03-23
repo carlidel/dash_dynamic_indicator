@@ -1184,15 +1184,15 @@ def confusion_plot(*args):
 
             for i, v in enumerate(samples):
                 if "reverse" in args[6]:
-                    tp[i] = np.count_nonzero(stab_data[ind_data >= v] == 10000000)
-                    tn[i] = np.count_nonzero(stab_data[ind_data < v] != 10000000)
-                    fp[i] = np.count_nonzero(stab_data[ind_data < v] == 10000000)
-                    fn[i] = np.count_nonzero(stab_data[ind_data >= v] != 10000000)
+                    tp[i] = np.count_nonzero(stab_data[ind_data >= v] >= args[7])
+                    tn[i] = np.count_nonzero(stab_data[ind_data < v] <= args[7])
+                    fp[i] = np.count_nonzero(stab_data[ind_data < v] >= args[7])
+                    fn[i] = np.count_nonzero(stab_data[ind_data >= v] <= args[7])
                 else:
-                    tp[i] = np.count_nonzero(stab_data[ind_data < v] == 10000000)
-                    tn[i] = np.count_nonzero(stab_data[ind_data >= v] != 10000000)
-                    fp[i] = np.count_nonzero(stab_data[ind_data >= v] == 10000000)
-                    fn[i] = np.count_nonzero(stab_data[ind_data < v] != 10000000)
+                    tp[i] = np.count_nonzero(stab_data[ind_data < v] >= args[7])
+                    tn[i] = np.count_nonzero(stab_data[ind_data >= v] <= args[7])
+                    fp[i] = np.count_nonzero(stab_data[ind_data >= v] >= args[7])
+                    fn[i] = np.count_nonzero(stab_data[ind_data < v] <= args[7])
             accuracy = (tp+tn)/(tp+tn+fp+fn)
             max_accuracy = np.nanargmax(accuracy)
             thresholds.append(samples[max_accuracy])
@@ -1338,48 +1338,65 @@ def evolution_plot(*args):
 
 
 @njit(parallel=True)
-def avg_convolve_core(padded_array, result, ks):
+def avg_convolve_core(padded_array, result, ks, take_top=True):
     ks = ks // 2
+    if take_top:
+        replacement = np.nanmax(padded_array)
+    else:
+        replacement = np.nanmin(padded_array)
     for i in prange(len(result)):
         for j in range(len(result[i])):
             if np.isnan(padded_array[i + ks, j + ks]):
                 result[i, j] = np.nan
             else:
-                result[i, j] = np.nanmean(
-                    padded_array[i: i + 1 + ks * 2, j: j + 1 + ks * 2]
-                )
+                sample = padded_array[i: i + 1 + ks * 2, j: j + 1 + ks * 2].copy()
+                for a in range(ks):
+                    for b in range(ks):
+                        if np.isnan(sample[a, b]):
+                            sample[a, b] = replacement
+                result[i, j] = np.nanmean(sample)
     return result
 
 
-def avg_convolve(array, ks):
+def avg_convolve(array, ks, take_top=True):
     len_pad = ks // 2
     return avg_convolve_core(
         np.pad(array, ((len_pad, len_pad), (len_pad, len_pad)), 'reflect'),
         np.empty_like(array),
-        ks
+        ks,
+        take_top
     )
 
 
 @njit(parallel=True)
-def std_convolve_core(padded_array, result, ks):
+def std_convolve_core(padded_array, result, ks, take_top=True):
     ks = ks // 2
+    if take_top:
+        replacement = np.nanmax(padded_array)
+    else:
+        replacement = np.nanmin(padded_array)
     for i in prange(len(result)):
         for j in range(len(result[i])):
             if np.isnan(padded_array[i + ks, j + ks]):
                 result[i, j] = np.nan
             else:
-                result[i, j] = np.nanstd(
-                    padded_array[i: i + 1 + ks * 2, j: j + 1 + ks * 2]
-                )
+                sample = padded_array[i: i + 1 +
+                                      ks * 2, j: j + 1 + ks * 2].copy()
+                for a in range(ks):
+                    for b in range(ks):
+                        if np.isnan(sample[a, b]):
+                            sample[a, b] = replacement
+                result[i, j] = np.nanstd(sample)
     return result
 
 
-def std_convolve(array, ks):
+def std_convolve(array, ks, take_top=True):
     len_pad = ks // 2
     return std_convolve_core(
         np.pad(array, ((len_pad, len_pad), (len_pad, len_pad)), 'reflect'),
         np.empty_like(array),
-        ks
+        ks,
+        take_top
     )
 
 
@@ -1453,8 +1470,16 @@ def convolution_plots(*args):
     if 'log10' in args[6]:
         ind_data = np.log10(ind_data)
     
-    avg_convolution = avg_convolve(ind_data, args[7]) 
-    std_convolution = std_convolve(ind_data, args[7]) 
+    avg_convolution = avg_convolve(
+        ind_data,
+        args[7],
+        (True if "color_invert" in args[6] else False)
+    ) 
+    std_convolution = std_convolve(
+        ind_data,
+        args[7],
+        (True if "color_invert" in args[6] else False)
+    ) 
 
     stab_data = stab_data.flatten()
 
@@ -1594,7 +1619,6 @@ def convolution_plots(*args):
     max_std_ind = np.nanmax(std_convolution)
     min_std_ind = np.nanmin(std_convolution)
     std_samples = np.linspace(min_std_ind, max_std_ind, args[12])
-    print("avg_samples", avg_samples)
 
     tp_avg = np.empty(args[12])
     tn_avg = np.empty(args[12])
@@ -1971,9 +1995,11 @@ def threshold_plots(*args):
     for block in iterable:
         t, ind_data = block
         if "avg" in args[10]:
-            ind_data = avg_convolve(ind_data, args[11])
+            ind_data = avg_convolve(ind_data, args[11],
+                                    (False if "reverse" in args[6] else True))
         elif "std" in args[10]:
-            ind_data = std_convolve(ind_data, args[11])
+            ind_data = std_convolve(ind_data, args[11],
+                                    (False if "reverse" in args[6] else True))
         ind_data = ind_data.flatten()
         times.append(t)
         if "log10" in args[6]:
@@ -1988,22 +2014,22 @@ def threshold_plots(*args):
         for i, v in enumerate(samples):
             if "reverse" in args[6]:
                 tp[i] = np.count_nonzero(
-                    stab_data[ind_data >= v] == args[7])
+                    stab_data[ind_data >= v] >= args[7])
                 tn[i] = np.count_nonzero(
-                    stab_data[ind_data < v] != args[7])
+                    stab_data[ind_data < v] <= args[7])
                 fp[i] = np.count_nonzero(
-                    stab_data[ind_data < v] == args[7])
+                    stab_data[ind_data < v] >= args[7])
                 fn[i] = np.count_nonzero(
-                    stab_data[ind_data >= v] != args[7])
+                    stab_data[ind_data >= v] <= args[7])
             else:
                 tp[i] = np.count_nonzero(
-                    stab_data[ind_data < v] == args[7])
+                    stab_data[ind_data < v] >= args[7])
                 tn[i] = np.count_nonzero(
-                    stab_data[ind_data >= v] != args[7])
+                    stab_data[ind_data >= v] <= args[7])
                 fp[i] = np.count_nonzero(
-                    stab_data[ind_data >= v] == args[7])
+                    stab_data[ind_data >= v] >= args[7])
                 fn[i] = np.count_nonzero(
-                    stab_data[ind_data < v] != args[7])
+                    stab_data[ind_data < v] <= args[7])
         accuracy = (tp+tn)/(tp+tn+fp+fn)
         max_accuracy = np.nanargmax(accuracy)
         thresholds.append(samples[max_accuracy])
@@ -2014,8 +2040,6 @@ def threshold_plots(*args):
     valid_conditions = [x for _, x in sorted(zip(times, valid_conditions))]
     times = [x for x in sorted(times)]
 
-    print(thresholds)
-    print(accuracies)
     final_fig = go.Figure()
     final_fig.add_trace(
         go.Scatter(
