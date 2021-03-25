@@ -50,7 +50,8 @@ class data_handler(object):
 
 
 ### Data location on EOS
-data_path = "/mnt/volume"
+data_path = "/home/camontan/cernbox/dyn_indicator_analysis/data"
+
 
 #### DATASET STANDARD ####
 
@@ -86,7 +87,7 @@ def get_raw_coordinates(parameters):
         y  = f["coords/y"][...]
         py = f["coords/py"][...]
     return x, px, y, py
-    
+
 
 #### RADIUS ####
 
@@ -296,6 +297,79 @@ EVO_RAD_data_handler = data_handler(
     EVO_RAD_get_data,
     EVO_RAD_get_plot,
     EVO_RAD_get_data_all_turns
+)
+
+#### RAW COORDS ####
+
+raw_coords_param_dict = {
+    "mu": mu_list,
+    "epsilon": epsilon_list
+}
+    
+
+def raw_coords_get_data(parameters):
+    filename = EVO_RAD_filename_standard(
+        parameters["mu"], parameters["epsilon"])
+    filename0 = init_filename_standard(
+        parameters["epsilon"], parameters["mu"])
+    f0 = h5py.File(os.path.join(data_path, filename0), mode="r")
+    if parameters["turns"] == 0:
+        idx = "coords"
+        with h5py.File(os.path.join(data_path, filename), mode="r") as f:
+            sample = f0[idx]
+            data = (
+                sample["x"][...],
+                sample["px"][...],
+                sample["y"][...],
+                sample["py"][...]
+            )
+        return data
+    idx = str(parameters["turns"])
+    with h5py.File(os.path.join(data_path, filename), mode="r") as f:
+        sample = f[idx]
+        data = (
+            sample["x"][...],
+            sample["px"][...],
+            sample["y"][...],
+            sample["py"][...]
+        )
+    return data
+
+
+def raw_coords_get_data_all_turns(parameters):
+    filename = EVO_RAD_filename_standard(
+        parameters["mu"], parameters["epsilon"])
+    filename0 = init_filename_standard(
+        parameters["epsilon"], parameters["mu"])
+    f0 = h5py.File(os.path.join(data_path, filename0), mode="r")   
+    f = h5py.File(os.path.join(data_path, filename), mode="r")
+    all_turns = list(f)
+    all_turns.remove("coords")
+    sample = f0["coords"]
+    data = (
+        sample["x"][...],
+        sample["px"][...],
+        sample["y"][...],
+        sample["py"][...]
+    )
+    yield 1, data # so that we do not have broken log scales for the number of turns
+    for t in all_turns:
+        sample = f[t]
+        data = (
+            sample["x"][...],
+            sample["px"][...],
+            sample["y"][...],
+            sample["py"][...]
+        )
+        yield int(t), data
+
+
+raw_coords_data_handler = data_handler(
+    EVO_RAD_filename_standard,
+    raw_coords_param_dict,
+    raw_coords_get_data,
+    None,
+    raw_coords_get_data_all_turns
 )
 
 
