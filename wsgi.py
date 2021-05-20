@@ -1067,12 +1067,12 @@ def convolution_plots(
     if 'log10' in linked_options:
         ind_data = np.log10(ind_data)
     
-    avg_convolution = avg_convolve(
+    avg_convolution = pm.avg_convolve(
         ind_data,
         kernel_size,
         (True if "color_invert" in linked_options else False)
     ) 
-    std_convolution = std_convolve(
+    std_convolution = pm.std_convolve(
         ind_data,
         kernel_size,
         (True if "color_invert" in linked_options else False)
