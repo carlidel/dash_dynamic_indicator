@@ -19,6 +19,8 @@ from numba import njit, prange
 
 from layouts import layout_1, layout_2, layout_3, layout_4, layout_5, layout_6, layout_7, layout_8
 
+import plot_maker as pm
+
 app = dash.Dash(__name__, external_stylesheets=[
                 dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 application = app.server
@@ -325,7 +327,7 @@ def update_dropdown_and_labels(value):
 
     return outputs
 
-#### Plots update ####
+#### Plots update ##############################################################
 
 
 @app.callback(
@@ -351,106 +353,44 @@ def update_figure(*args):
     log_scale = True if 'log10' in args[6] else False
     return handler.get_plot(param_dict, log_scale)
 
-
-def exe_update_correlation_plot(*args):
-    handler_1 = handler_list[args[17]]
-    handler_2 = handler_list[args[18]]
-
-    param_list_1 = handler_1.get_param_list()
-    param_dict_1 = {}
-    for i in range(len(param_list_1)):
-        param_dict_1[param_list_1[i]] = args[i]
-    data_1 = handler_1.get_data(param_dict_1)
-    if 'log10' in args[6]:
-        data_1 = np.log10(data_1)
-
-    param_list_2 = handler_2.get_param_list()
-    param_dict_2 = {}
-    for i in range(len(param_list_2)):
-        param_dict_2[param_list_2[i]] = args[i + 7]
-    data_2 = handler_2.get_data(param_dict_2)
-    if 'log10' in args[13]:
-        data_2 = np.log10(data_2)
-
-    # make plot
-    data_1 = data_1.flatten()
-    data_2 = data_2.flatten()
-
-    fig = go.Figure(
-        data=go.Scattergl(
-            x=data_1,
-            y=data_2,
-            mode='markers'
-        )
-    )
-
-    fig.update_layout(
-        title="Correlation Scatter Plot"
-    )
-
-    return fig
+################################################################################
 
 
-@cache.memoize(timeout=CACHE_TIMEOUT)
-def exe_update_correlation_plot_bis(*args):
-    handler_1 = handler_list[args[17]]
-    handler_2 = handler_list[args[18]]
+def update_correlation_plot(
+    d_00, d_01, d_02, d_03, d_04, d_05, linked_options_0,
+    d_10, d_11, d_12, d_13, d_14, d_15, linked_options_1,
+    x_bin, y_bin, fig_options, md_0, md_1
+):
+    d_0 = (d_00, d_01, d_02, d_03, d_04, d_05)
+    d_1 = (d_10, d_11, d_12, d_13, d_14, d_15)
+    handler_1 = handler_list[md_0]
+    handler_2 = handler_list[md_1]
 
     param_list_1 = handler_1.get_param_list()
     param_dict_1 = {}
     for i in range(len(param_list_1)):
-        param_dict_1[param_list_1[i]] = args[i]
+        param_dict_1[param_list_1[i]] = d_0[i]
     data_1 = handler_1.get_data(param_dict_1)
-    if 'log10' in args[6]:
-        data_1[data_1 == 0] = np.nan
-        data_1 = np.log10(data_1)
 
     param_list_2 = handler_2.get_param_list()
     param_dict_2 = {}
     for i in range(len(param_list_2)):
-        param_dict_2[param_list_2[i]] = args[i + 7]
+        param_dict_2[param_list_2[i]] = d_1[i]
     data_2 = handler_2.get_data(param_dict_2)
-    if 'log10' in args[13]:
-        data_2[data_2 == 0] = np.nan
-        data_2 = np.log10(data_2)
 
-    # make plot
-    data_1 = data_1.flatten()
-    data_2 = data_2.flatten()
-
-    bool_mask = np.logical_and(
-        np.logical_not(np.isnan(data_1)),
-        np.logical_not(np.isnan(data_2)),
+    fig1 = pm.correlation_plot(
+        data_1, data_2,
+        log10_x='log10' in linked_options_0,
+        log10_y='log10' in linked_options_1
     )
-    data_1 = data_1[bool_mask]
-    data_2 = data_2[bool_mask]
+    fig2 = pm.correlation_plot_bis(
+        data_1, data_2,
+        x_bin, y_bin,
+        log10_x='log10' in linked_options_0,
+        log10_y='log10' in linked_options_1,
+        log10_hist='log10' in fig_options)
 
-    histo, xedj, yedj = np.histogram2d(
-        data_1,
-        data_2,
-        bins=[args[14], args[15]],
-        range=[[data_1.min(), data_1.max()], [data_2.min(), data_2.max()]]
-    )
-
-    histo[histo == 0] = np.nan
-    if "log10" in args[16]:
-        histo = np.log10(histo)
-
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=np.transpose(histo),
-            x=xedj,
-            y=yedj,
-            hoverongaps=False,
-            colorscale="Viridis",
-        )
-    )
-    fig.update_layout(
-        title="Correlation Density Plot " +
-        ("[log10 scale]" if "log10" in args[16] else "[linear scale]")
-    )
-
-    return fig
+    return [fig1, fig2]
 
 
 @app.callback(
@@ -485,11 +425,8 @@ def exe_update_correlation_plot_bis(*args):
         State({'type': 'main_dropdown', 'index': TAB_1_PADDING+1}, 'value')  # 18
     ]
 )
-def update_correlation_plot(*args):
-    return [
-        exe_update_correlation_plot(*args),
-        exe_update_correlation_plot_bis(*args)
-    ]
+def cb_corr_1(*args):
+    return update_correlation_plot(*args)
 
 
 @app.callback(
@@ -524,60 +461,41 @@ def update_correlation_plot(*args):
         State({'type': 'main_dropdown', 'index': TAB_1_PADDING+3}, 'value')  # 18
     ]
 )
-def update_correlation_plot_2(*args):
-    return [
-        exe_update_correlation_plot(*args),
-        exe_update_correlation_plot_bis(*args)
-    ]
+def cb_corr_2(*args):
+    return update_correlation_plot(*args)
 
 
-@cache.memoize(timeout=CACHE_TIMEOUT)
-def exe_update_diff_plot(*args):
-    handler_1 = handler_list[args[15]]
-    handler_2 = handler_list[args[16]]
+def update_difference_plot(
+    d_00, d_01, d_02, d_03, d_04, d_05, linked_options_0,
+    d_10, d_11, d_12, d_13, d_14, d_15, linked_options_1,
+    plot_options, md_0, md_1
+):
+    d_0 = (d_00, d_01, d_02, d_03, d_04, d_05)
+    d_1 = (d_10, d_11, d_12, d_13, d_14, d_15)
+    handler_1 = handler_list[md_0]
+    handler_2 = handler_list[md_1]
 
     param_list_1 = handler_1.get_param_list()
     param_dict_1 = {}
     for i in range(len(param_list_1)):
-        param_dict_1[param_list_1[i]] = args[i]
+        param_dict_1[param_list_1[i]] = d_0[i]
     data_1 = handler_1.get_data(param_dict_1)
-    if 'log10' in args[6]:
-        data_1 = np.log10(data_1)
 
     param_list_2 = handler_2.get_param_list()
     param_dict_2 = {}
     for i in range(len(param_list_2)):
-        param_dict_2[param_list_2[i]] = args[i + 7]
+        param_dict_2[param_list_2[i]] = d_1[i]
     data_2 = handler_2.get_data(param_dict_2)
-    if 'log10' in args[13]:
-        data_2 = np.log10(data_2)
 
-    # make plot
-    data = data_1 - data_2
-    if 'relative' in args[14]:
-        data = data / data_1
-    if 'absolute' in args[14]:
-        data = np.absolute(data)
-    if 'log10' in args[14]:
-        data = np.log10(data)
-
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=data,
-            x=np.linspace(0, 1, 500),
-            y=np.linspace(0, 1, 500),
-            hoverongaps=False,
-            colorscale="Viridis"
-        )
+    fig = pm.diff_plot(
+        data_1, data_2,
+        log10_x="log10" in linked_options_0,
+        log10_y="log10" in linked_options_1,
+        relative_plot='relative' in plot_options,
+        absolute_plot='absolute' in plot_options,
+        log10_plot='log10' in plot_options
     )
-    fig.update_layout(
-        title="Difference "
-        + ("[absolute value] " if "absolute" in args[14] else "")
-        + ("[log10 scale]" if "log10" in args[14] else "[linear scale]"),
-        xaxis_title="X_0",
-        yaxis_title="Y_0"
-    )
-    return fig
+    return [fig]
 
 
 @app.callback(
@@ -624,8 +542,8 @@ def exe_update_diff_plot(*args):
                'index': TAB_1_PADDING+TAB_2_PADDING+1}, 'value')     # 16
     ]
 )
-def update_diff_plot(*args):
-    return [exe_update_diff_plot(*args)]
+def cd_diff_plot_1(*args):
+    return update_difference_plot(*args)
 
 
 @app.callback(
@@ -672,8 +590,8 @@ def update_diff_plot(*args):
                'index': TAB_1_PADDING+TAB_2_PADDING+3}, 'value')     # 16
     ]
 )
-def update_diff_plot_2(*args):
-    return [exe_update_diff_plot(*args)]
+def cd_diff_plot_2(*args):
+    return update_difference_plot(*args)
 
 
 ################### RESONANCE PLOTS ############################################
@@ -967,6 +885,7 @@ def update_frequency_plot(*args):
 
     return fig
 
+################################################################################
 
 @app.callback(
     [
@@ -992,12 +911,16 @@ def update_frequency_plot(*args):
     ]
 )
 @cache.memoize(timeout=CACHE_TIMEOUT)
-def confusion_plot(*args):
-    handler = handler_list[args[10]]
+def confusion_plot(
+    d_00, d_01, d_02, d_03, d_04, d_05, linked_options,
+    stab_time, input_negative, input_samples, md_0
+):
+    d_0 = (d_00, d_01, d_02, d_03, d_04, d_05)
+    handler = handler_list[md_0]
     param_list = handler.get_param_list()
     param_dict = {}
     for i in range(len(param_list)):
-        param_dict[param_list[i]] = args[i]
+        param_dict[param_list[i]] = d_0[i]
     stab_param = {
         'epsilon': param_dict["epsilon"],
         'mu': param_dict["mu"],
@@ -1006,240 +929,28 @@ def confusion_plot(*args):
     stab_data = dh.stability_data_handler.get_data(stab_param).flatten()
     ind_data = np.asarray(handler.get_data(param_dict)).flatten()
 
-    if "log10" in args[6]:
-        ind_data[ind_data == 0] = np.nan
-        ind_data = np.log10(ind_data)
-    max_ind = np.nanmax(ind_data)
-    min_ind = np.nanmin(ind_data)
-    samples = np.linspace(min_ind, max_ind, args[9]+2)[1:-1]
-
-    tp = np.empty(args[9])
-    tn = np.empty(args[9])
-    fp = np.empty(args[9])
-    fn = np.empty(args[9])
-
-    for i, v in enumerate(samples):
-        if "reverse" in args[6]:
-            tp[i] = np.count_nonzero(stab_data[ind_data >= v] >= args[7])
-            tn[i] = np.count_nonzero(stab_data[ind_data < v] < args[7])
-            fp[i] = np.count_nonzero(stab_data[ind_data < v] >= args[7])
-            fn[i] = np.count_nonzero(stab_data[ind_data >= v] < args[7])
-        else:
-            tp[i] = np.count_nonzero(stab_data[ind_data < v] >= args[7])
-            tn[i] = np.count_nonzero(stab_data[ind_data >= v] < args[7])
-            fp[i] = np.count_nonzero(stab_data[ind_data >= v] >= args[7])
-            fn[i] = np.count_nonzero(stab_data[ind_data < v] < args[7])
-
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=samples,
-            y=tp,
-            name="True Positive",
-            mode='lines',
-            marker_color="red"
-        ))
-    fig.add_trace(
-        go.Scatter(
-            x=samples,
-            y=tn,
-            name="True Negative",
-            mode='lines',
-            marker_color="orange"
-        ))
-    fig.add_trace(
-        go.Scatter(
-            x=samples,
-            y=fp,
-            name="False Positive",
-            mode='lines',
-            marker_color="blue"
-        ))
-    fig.add_trace(
-        go.Scatter(
-            x=samples,
-            y=fn,
-            name="False Negative",
-            mode='lines',
-            marker_color="cyan"
-        ))
-
-    max_accuracy = np.nanargmax((tp + tn) / (tp + tn + fn + fp))
-
-    fig.update_layout(
-        title="Threshold evaluation",
-        xaxis_title="Threshold position",
-        yaxis_title="Samples"
+    fig, fig_adv, table = pm.confusion_plot_single(
+        stab_data, ind_data, 
+        log10_ind="log10" in linked_options,
+        stab_thresh=stab_time,
+        sampling=input_samples,
+        reverse="reverse" in linked_options
     )
-
-    accuracy = (tp+tn)/(tp+tn+fp+fn)
-    precision = tp/(tp+fp)
-    sensitivity = tp/(tp+fn)
-    specificity = tn/(tn+fp)
-
-    fig_adv = go.Figure()
-    fig_adv.add_trace(
-        go.Scatter(
-            x=samples,
-            y=accuracy,
-            name="Accuracy",
-            mode='lines'
-        )
-    )
-    fig_adv.add_trace(
-        go.Scatter(
-            x=samples,
-            y=precision,
-            name="Precision",
-            mode="lines"
-        )
-    )
-    fig_adv.add_trace(
-        go.Scatter(
-            x=samples,
-            y=sensitivity,
-            name="Sensitivity",
-            mode="lines"
-        )
-    )
-    fig_adv.add_trace(
-        go.Scatter(
-            x=samples,
-            y=specificity,
-            name="Specificity",
-            mode='lines'
-        )
-    )
-    fig_adv.add_vline(
-        samples[max_accuracy],
-        annotation_text="Max accuracy",
-        annotation_position="bottom right"
-    )
-    fig_adv.update_layout(
-        xaxis_title="Threshold position",
-        yaxis_title="Value"
-    )
-
-    fig.update_layout(legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="right",
-        x=1
-    ))
-    fig_adv.update_layout(legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="right",
-        x=1
-    ))
-    fig.update_layout(hovermode="x")
-    fig_adv.update_layout(hovermode="x")
-
-    table_header = [
-    html.Thead(html.Tr([html.Th("Parameter"), html.Th("Value")]))
-    ]
-
-    row1 = html.Tr([
-        html.Td("Best Threshold (accuracy-wise)"), 
-        html.Td("{:2e}".format(samples[max_accuracy]))
-    ])
-    row3 = html.Tr([
-        html.Td("Accuracy"),
-        html.Td("{:.2f}%".format((accuracy[max_accuracy]*100)))
-    ])
-    row2 = html.Tr([
-        html.Td("Precision"),
-        html.Td("{:.2f}%".format((precision[max_accuracy]*100)))
-    ])
-    row4 = html.Tr([
-        html.Td("Sensitivity"),
-        html.Td("{:.2f}%".format((sensitivity[max_accuracy]*100)))
-    ])
-    row5 = html.Tr([
-        html.Td("Specificity"),
-        html.Td("{:.2f}%".format((specificity[max_accuracy]*100)))
-    ])
-    
-    table_body = [html.Tbody([row1, row2, row3, row4, row5])]
 
     iterable = handler.get_data_all_turns(param_dict)
-    if iterable is None or 'full_scan' not in args[6]:
-        final_fig = go.Figure()
-    else:
-        times = []
-        thresholds = []
-        accuracies = []
-        for block in iterable:
-            t, ind_data = block
-            ind_data = ind_data.flatten()
-            times.append(t)
-            if "log10" in args[6]:
-                ind_data[ind_data==0] = np.nan
-                ind_data = np.log10(ind_data)
-            max_ind = np.nanmax(ind_data)
-            min_ind = np.nanmin(ind_data)
-            samples = np.linspace(min_ind, max_ind, args[9]+2)[1:-1]
+    fig_final = pm.confusion_plot_multiple(
+        stab_data,
+        iterable,
+        log10_ind="log10" in linked_options,
+        stab_thresh=stab_time,
+        sampling=input_samples,
+        reverse="reverse" in linked_options
+    )
 
-            for i, v in enumerate(samples):
-                if "reverse" in args[6]:
-                    tp[i] = np.count_nonzero(stab_data[ind_data >= v] >= args[7])
-                    tn[i] = np.count_nonzero(stab_data[ind_data < v] <= args[7])
-                    fp[i] = np.count_nonzero(stab_data[ind_data < v] >= args[7])
-                    fn[i] = np.count_nonzero(stab_data[ind_data >= v] <= args[7])
-                else:
-                    tp[i] = np.count_nonzero(stab_data[ind_data < v] >= args[7])
-                    tn[i] = np.count_nonzero(stab_data[ind_data >= v] <= args[7])
-                    fp[i] = np.count_nonzero(stab_data[ind_data >= v] >= args[7])
-                    fn[i] = np.count_nonzero(stab_data[ind_data < v] <= args[7])
-            accuracy = (tp+tn)/(tp+tn+fp+fn)
-            max_accuracy = np.nanargmax(accuracy)
-            thresholds.append(samples[max_accuracy])
-            accuracies.append(accuracy[max_accuracy])
+    return [fig, fig_adv, table, fig_final]
 
-        thresholds = [x for _, x in sorted(zip(times, thresholds))]
-        accuracies = [x for _, x in sorted(zip(times, accuracies))]
-        times = [x for x in sorted(times)]
 
-        final_fig = make_subplots(specs=[[{"secondary_y": True}]])
-        final_fig.add_trace(
-            go.Scatter(
-                x=times,
-                y=thresholds,
-                name="Best Thresholds (accuracy-wise)",
-                mode="lines"
-            ),
-            secondary_y=False,
-        )
-        final_fig.add_trace(
-            go.Scatter(
-                x=times,
-                y=accuracies,
-                name="Accuracy",
-                mode="lines"
-            ),
-            secondary_y=True,
-        )
-        final_fig.update_layout(legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ))
-        final_fig.update_layout(hovermode="x")
-        final_fig.update_layout(
-            title="Theshold evolution for " + name_options[args[10]])
-        final_fig.update_xaxes(
-            title_text="N turns used for computing indicator",
-            type="log"
-            )
-        final_fig.update_yaxes(title_text="Threshold value", secondary_y=False)
-        final_fig.update_yaxes(title_text="Accuracy value", secondary_y=True)
-
-    return [fig, fig_adv, table_header + table_body, final_fig]
-
+################################################################################
 
 @app.callback(
     [
@@ -1262,143 +973,36 @@ def confusion_plot(*args):
     ]
 )
 @cache.memoize(timeout=CACHE_TIMEOUT)
-def evolution_plot(*args):
-    handler = handler_list[args[10]]
+def evolution_plot(
+    d_00, d_01, d_02, d_03, d_04, d_05, linked_options,
+    min_turns, max_turns, sample_skip, md_0
+):
+    d_0 = (d_00, d_01, d_02, d_03, d_04, d_05)
+    handler = handler_list[md_0]
     param_list = handler.get_param_list()
     param_dict = {}
     for i in range(len(param_list)):
-        param_dict[param_list[i]] = args[i]
+        param_dict[param_list[i]] = d_0[i]
     stab_param = {
         'epsilon': param_dict["epsilon"],
         'mu': param_dict["mu"],
         'kick': 'no_kick'
     }
-    stab_data = np.log10(dh.stability_data_handler.get_data(stab_param).flatten())
+    stab_data = dh.stability_data_handler.get_data(stab_param)
     iterable = handler.get_data_all_turns(param_dict)
-    if iterable is None:
-        return [go.Figure()]
-    t_list = []
-    values = []
-    for t, v in iterable:
-        t_list.append(t)
-        values.append(v.flatten())
 
-    values = [x for _, x in sorted(zip(t_list, values))]
-    t_list = [x for x in sorted(t_list)]
-
-    t_list = np.array(t_list)
-    values = np.array(values)
-
-    if "log10" in args[6]:
-        values = np.log10(values)
-
-    cmap = matplotlib.cm.get_cmap('viridis')
-    fig = go.Figure()
-    min_lim = -np.inf if args[7] == 0.0 else np.log10(args[7])
-    max_lim = np.log10(args[8])
-    for i in range(0, values.shape[1], int(args[9])):
-        if "filter" not in args[6] or not (stab_data[i] < min_lim or stab_data[i] > max_lim):        
-            color = cmap(stab_data[i]/7)
-            color = 'rgb({},{},{})'.format(
-                int(color[0]*255), int(color[1]*255), int(color[2]*255),)
-            fig.add_trace(
-                go.Scattergl(
-                    x=t_list,
-                    y=values[:, i],
-                    line=dict(
-                        color=color,
-                        width=1.0
-                    ),
-                    mode='lines+markers',
-                    showlegend=False,
-                )
-            )
-    fig.add_trace(go.Scatter(
-        x=[None],
-        y=[None],
-        name="Stability time [log10]",
-        mode='markers',
-        marker=dict(
-            colorscale='Viridis',
-            showscale=True,
-            cmin=np.nanmin(stab_data),
-            cmax=np.nanmax(stab_data),
-        ),
-        hoverinfo='none'
-    ))
-
-    fig.update_xaxes(type="log")
-    fig.update_layout(height=1200)
-    fig.update_layout(
-        title="Evolution plot",
-        xaxis_title="Turns executed",
-        yaxis_title="Dynamic indicator value"
+    fig = pm.evolution_plot(
+        stab_data,
+        iterable,
+        min_turns,
+        max_turns,
+        sample_skip,
+        log10='log10' in linked_options,
+        filter_data='filter' in linked_options
     )
     return [fig]
 
-
-@njit(parallel=True)
-def avg_convolve_core(padded_array, result, ks, take_top=True):
-    ks = ks // 2
-    if take_top:
-        replacement = np.nanmax(padded_array)
-    else:
-        replacement = np.nanmin(padded_array)
-    for i in prange(len(result)):
-        for j in range(len(result[i])):
-            if np.isnan(padded_array[i + ks, j + ks]):
-                result[i, j] = np.nan
-            else:
-                sample = padded_array[i: i + 1 + ks * 2, j: j + 1 + ks * 2].copy()
-                for a in range(ks):
-                    for b in range(ks):
-                        if np.isnan(sample[a, b]):
-                            sample[a, b] = replacement
-                result[i, j] = np.nanmean(sample)
-    return result
-
-
-def avg_convolve(array, ks, take_top=True):
-    len_pad = ks // 2
-    return avg_convolve_core(
-        np.pad(array, ((len_pad, len_pad), (len_pad, len_pad)), 'reflect'),
-        np.empty_like(array),
-        ks,
-        take_top
-    )
-
-
-@njit(parallel=True)
-def std_convolve_core(padded_array, result, ks, take_top=True):
-    ks = ks // 2
-    if take_top:
-        replacement = np.nanmax(padded_array)
-    else:
-        replacement = np.nanmin(padded_array)
-    for i in prange(len(result)):
-        for j in range(len(result[i])):
-            if np.isnan(padded_array[i + ks, j + ks]):
-                result[i, j] = np.nan
-            else:
-                sample = padded_array[i: i + 1 +
-                                      ks * 2, j: j + 1 + ks * 2].copy()
-                for a in range(ks):
-                    for b in range(ks):
-                        if np.isnan(sample[a, b]):
-                            sample[a, b] = replacement
-                result[i, j] = np.nanstd(sample)
-    return result
-
-
-def std_convolve(array, ks, take_top=True):
-    len_pad = ks // 2
-    return std_convolve_core(
-        np.pad(array, ((len_pad, len_pad), (len_pad, len_pad)), 'reflect'),
-        np.empty_like(array),
-        ks,
-        take_top
-    )
-
+################################################################################
 
 @app.callback(
     [
@@ -1435,289 +1039,134 @@ def std_convolve(array, ks, take_top=True):
     ]
 )
 @cache.memoize(timeout=CACHE_TIMEOUT)
-def convolution_plots(*args):
-    handler = handler_list[args[13]]
+def convolution_plots(
+    d_00, d_01, d_02, d_03, d_04, d_05, linked_options,
+    kernel_size, x_bin, y_bin, stab_time, input_negative, input_samples, md_0
+):
+    d_0 = (d_00, d_01, d_02, d_03, d_04, d_05)
+    handler = handler_list[md_0]
     param_list = handler.get_param_list()
     param_dict = {}
     for i in range(len(param_list)):
-        param_dict[param_list[i]] = args[i]
+        param_dict[param_list[i]] = d_0[i]
     stab_param = {
         'epsilon': param_dict["epsilon"],
         'mu': param_dict["mu"],
         'kick': 'no_kick'
     }
 
-    stab_data = np.log10(dh.stability_data_handler.get_data(stab_param))
-    
-    fig_just_stab = go.Figure()
-    fig_just_stab.add_trace(
-        go.Heatmap(
-            z=stab_data,
-            x=np.linspace(0, 1, 500),
-            y=np.linspace(0, 1, 500),
-            hoverongaps=False,
-            colorscale="Viridis"
-        )
-    )
-    fig_just_stab.update_layout(
-        title="Stability time [log10 scale]",
-        xaxis_title="X_0",
-        yaxis_title="Y_0"
-    )
-    
+    stab_data = dh.stability_data_handler.get_data(stab_param)
     ind_data = np.asarray(handler.get_data(param_dict))
     
-    if 'log10' in args[6]:
+    fig_just_stab = pm.simple_heatmap(
+        stab_data,
+        log10=True,
+        title="Stability time"
+    )
+
+    if 'log10' in linked_options:
         ind_data = np.log10(ind_data)
     
     avg_convolution = avg_convolve(
         ind_data,
-        args[7],
-        (True if "color_invert" in args[6] else False)
+        kernel_size,
+        (True if "color_invert" in linked_options else False)
     ) 
     std_convolution = std_convolve(
         ind_data,
-        args[7],
-        (True if "color_invert" in args[6] else False)
+        kernel_size,
+        (True if "color_invert" in linked_options else False)
     ) 
 
-    stab_data = stab_data.flatten()
-
-    fig_img_avg = go.Figure()
-    fig_img_avg.add_trace(go.Heatmap(
-        z=avg_convolution,
-        x=np.linspace(0, 1, 500),
-        y=np.linspace(0, 1, 500),
-        hoverongaps=False,
-        colorscale="Viridis",
-        reversescale=(True if "color_invert" in args[6] else False)
-    ))
-    fig_img_avg.update_layout(
+    fig_img_avg = pm.simple_heatmap(
+        avg_convolution,
+        log10=False,
         title="Uniform filter",
-        xaxis_title="X_0",
-        yaxis_title="Y_0"
+        reversescale=(True if "color_invert" in linked_options else False)
     )
 
-    fig_img_std = go.Figure()
-    fig_img_std.add_trace(go.Heatmap(
-        z=std_convolution,
-        x=np.linspace(0, 1, 500),
-        y=np.linspace(0, 1, 500),
-        hoverongaps=False,
-        colorscale="Viridis",
-        reversescale=(True if "color_invert" in args[6] else False)
-    ))
-    fig_img_std.update_layout(
-        title="Standard deviation filter",
-        xaxis_title="X_0",
-        yaxis_title="Y_0"
+    fig_img_std = pm.simple_heatmap(
+        std_convolution,
+        log10=False,
+        title="Uniform filter",
+        reversescale=(True if "color_invert" in linked_options else False)
     )
+
+    stab_data = stab_data.flatten()
     avg_convolution = avg_convolution.flatten()
     std_convolution = std_convolution.flatten()
     ind_data_flat = ind_data.flatten()
 
-    bool_mask = np.logical_and(
-        np.logical_not(np.isnan(stab_data)),
-        np.logical_not(np.isnan(ind_data_flat))
-    )
-    stab_data_temp = stab_data[bool_mask]
-    ind_data_flat = ind_data_flat[bool_mask]
-    histo_standard, xedj_standard, yedj_standard = np.histogram2d(
-        stab_data_temp,
+    fig_histo_standard = pm.correlation_plot_bis(
+        stab_data,
         ind_data_flat,
-        bins=[args[8], args[9]],
-        range=[[stab_data_temp.min(), stab_data_temp.max()], [
-            ind_data_flat.min(), ind_data_flat.max()]]
-    )
-    histo_standard[histo_standard == 0] = np.nan
-    if "log10_histo" in args[6]:
-        histo_standard = np.log10(histo_standard)
-    fig_histo_standard = go.Figure()
-    fig_histo_standard.add_trace(
-        go.Heatmap(
-            z=np.transpose(histo_standard),
-            x=xedj_standard,
-            y=yedj_standard,
-            hoverongaps=False,
-            colorscale="Viridis",
-        )
-    )
-    fig_histo_standard.update_layout(
-        title="Correlation density plot for standard data " +
-        ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
-        yaxis_title="Dynamic indicator",
-        xaxis_title="Stability time [log10]"
+        x_bin,
+        y_bin,
+        log10_x=True,
+        log10_y=False,
+        log10_hist="log10_histo" in linked_options
     )
 
-    bool_mask = np.logical_and(
-        np.logical_not(np.isnan(stab_data)),
-        np.logical_not(np.isnan(avg_convolution)),
-    )
-    stab_data = stab_data[bool_mask]
-    avg_convolution = avg_convolution[bool_mask]
-    std_convolution = std_convolution[bool_mask]
-
-    histo_avg, xedj_avg, yedj_avg = np.histogram2d(
+    fig_histo_avg = pm.correlation_plot_bis(
         stab_data,
         avg_convolution,
-        bins=[args[8], args[9]],
-        range=[[stab_data.min(), stab_data.max()], [
-            avg_convolution.min(), avg_convolution.max()]]
+        x_bin,
+        y_bin,
+        log10_x=True,
+        log10_y=False,
+        log10_hist="log10_histo" in linked_options
     )
-    histo_avg[histo_avg == 0] = np.nan
-    if "log10_histo" in args[6]:
-        histo_avg = np.log10(histo_avg)
 
-    histo_std, xedj_std, yedj_std = np.histogram2d(
+    fig_histo_std = pm.correlation_plot_bis(
         stab_data,
         std_convolution,
-        bins=[args[8], args[9]],
-        range=[[stab_data.min(), stab_data.max()], [
-            std_convolution.min(), std_convolution.max()]]
+        x_bin,
+        y_bin,
+        log10_x=True,
+        log10_y=False,
+        log10_hist="log10_histo" in linked_options
     )
-    histo_std[histo_std == 0] = np.nan
-    if "log10_histo" in args[6]:
-        histo_std = np.log10(histo_std)
 
-    fig_histo_avg = go.Figure()
-    fig_histo_avg.add_trace(
-        go.Heatmap(
-            z=np.transpose(histo_avg),
-            x=xedj_avg,
-            y=yedj_avg,
-            hoverongaps=False,
-            colorscale="Viridis",
-        )
+    fig_histo_standard.update_layout(
+        title="Correlation density plot for standard data " +
+        ("[log10 scale]" if "log10_histo" in linked_options else "[linear scale]"),
+        yaxis_title="Dynamic indicator",
+        xaxis_title="Stability time [log10]"
     )
+
     fig_histo_avg.update_layout(
         title="Correlation density plot for uniform filter " +
-        ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
+        ("[log10 scale]" if "log10_histo" in linked_options else "[linear scale]"),
         yaxis_title="Dynamic indicator",
         xaxis_title="Stability time [log10]"
     )
 
-    fig_histo_std = go.Figure()
-    fig_histo_std.add_trace(
-        go.Heatmap(
-            z=np.transpose(histo_std),
-            x=xedj_std,
-            y=yedj_std,
-            hoverongaps=False,
-            colorscale="Viridis",
-        )
-    )
     fig_histo_std.update_layout(
         title="Correlation density plot for standard deviation filter " +
-        ("[log10 scale]" if "log10_histo" in args[6] else "[linear scale]"),
+        ("[log10 scale]" if "log10_histo" in linked_options else "[linear scale]"),
         yaxis_title="Dynamic indicator",
         xaxis_title="Stability time [log10]"
     )
 
-    max_avg_ind = np.nanmax(avg_convolution)
-    min_avg_ind = np.nanmin(avg_convolution)
-    avg_samples = np.linspace(min_avg_ind, max_avg_ind, args[12])
-    max_std_ind = np.nanmax(std_convolution)
-    min_std_ind = np.nanmin(std_convolution)
-    std_samples = np.linspace(min_std_ind, max_std_ind, args[12])
+    
+    fig_conf_main_avg, fig_conf_adv_avg, table_cond_avg = pm.confusion_plot_single(
+        stab_data,
+        avg_convolution,
+        log10_ind=False,
+        stab_thresh=stab_time,
+        sampling=input_samples,
+        reverse="reverse" in linked_options
+    )
 
-    tp_avg = np.empty(args[12])
-    tn_avg = np.empty(args[12])
-    fp_avg = np.empty(args[12])
-    fn_avg = np.empty(args[12])
-    tp_std = np.empty(args[12])
-    tn_std = np.empty(args[12])
-    fp_std = np.empty(args[12])
-    fn_std = np.empty(args[12])
+    fig_conf_main_std, fig_conf_adv_std, table_cond_std = pm.confusion_plot_single(
+        stab_data,
+        std_convolution,
+        log10_ind=False,
+        stab_thresh=stab_time,
+        sampling=input_samples,
+        reverse="reverse" in linked_options
+    )
 
-    stab_threshold = np.log10(args[10])
-    for i, v in enumerate(avg_samples):
-        if "reverse" in args[6]:
-            tp_avg[i] = np.count_nonzero(
-                stab_data[avg_convolution >= v] >= stab_threshold
-            )
-            tn_avg[i] = np.count_nonzero(
-                stab_data[avg_convolution < v] < stab_threshold
-            )
-            fp_avg[i] = np.count_nonzero(
-                stab_data[avg_convolution >= v] < stab_threshold
-            )
-            fn_avg[i] = np.count_nonzero(
-                stab_data[avg_convolution < v] >= stab_threshold
-            )
-        else:
-            tp_avg[i] = np.count_nonzero(
-                stab_data[avg_convolution < v] >= stab_threshold
-            )
-            tn_avg[i] = np.count_nonzero(
-                stab_data[avg_convolution >= v] < stab_threshold
-            )
-            fp_avg[i] = np.count_nonzero(
-                stab_data[avg_convolution < v] < stab_threshold
-            )
-            fn_avg[i] = np.count_nonzero(
-                stab_data[avg_convolution >= v] >= stab_threshold
-            )
-    for i, v in enumerate(std_samples):
-        if "reverse" in args[6]:
-            tp_std[i] = np.count_nonzero(
-                stab_data[std_convolution >= v] >= stab_threshold
-            )
-            tn_std[i] = np.count_nonzero(
-                stab_data[std_convolution < v] < stab_threshold
-            )
-            fp_std[i] = np.count_nonzero(
-                stab_data[std_convolution >= v] < stab_threshold
-            )
-            fn_std[i] = np.count_nonzero(
-                stab_data[std_convolution < v] >= stab_threshold
-            )
-        else:
-            tp_std[i] = np.count_nonzero(
-                stab_data[std_convolution < v] >= stab_threshold
-            )
-            tn_std[i] = np.count_nonzero(
-                stab_data[std_convolution >= v] < stab_threshold
-            )
-            fp_std[i] = np.count_nonzero(
-                stab_data[std_convolution < v] < stab_threshold
-            )
-            fn_std[i] = np.count_nonzero(
-                stab_data[std_convolution >= v] >= stab_threshold
-            )
-
-    fig_conf_main_avg = go.Figure()
-    fig_conf_main_avg.add_trace(
-        go.Scatter(
-            x=avg_samples,
-            y=tp_avg,
-            name="True Positive",
-            mode='lines',
-            marker_color="red"
-        ))
-    fig_conf_main_avg.add_trace(
-        go.Scatter(
-            x=avg_samples,
-            y=tn_avg,
-            name="True Negative",
-            mode='lines',
-            marker_color="orange"
-        ))
-    fig_conf_main_avg.add_trace(
-        go.Scatter(
-            x=avg_samples,
-            y=fp_avg,
-            name="False Positive",
-            mode='lines',
-            marker_color="blue"
-        ))
-    fig_conf_main_avg.add_trace(
-        go.Scatter(
-            x=avg_samples,
-            y=fn_avg,
-            name="False Negative",
-            mode='lines',
-            marker_color="cyan"
-        ))
     fig_conf_main_avg.update_layout(
         title="Threshold evaluation (average convolution)",
         xaxis_title="Threshold position",
@@ -1730,41 +1179,7 @@ def convolution_plots(*args):
         xanchor="right",
         x=1
     ))
-    fig_conf_main_avg.update_layout(hovermode="x")
 
-    fig_conf_main_std = go.Figure()
-    fig_conf_main_std.add_trace(
-        go.Scatter(
-            x=std_samples,
-            y=tp_std,
-            name="True Positive",
-            mode='lines',
-            marker_color="red"
-        ))
-    fig_conf_main_std.add_trace(
-        go.Scatter(
-            x=std_samples,
-            y=tn_std,
-            name="True Negative",
-            mode='lines',
-            marker_color="orange"
-        ))
-    fig_conf_main_std.add_trace(
-        go.Scatter(
-            x=std_samples,
-            y=fp_std,
-            name="False Positive",
-            mode='lines',
-            marker_color="blue"
-        ))
-    fig_conf_main_std.add_trace(
-        go.Scatter(
-            x=std_samples,
-            y=fn_std,
-            name="False Negative",
-            mode='lines',
-            marker_color="cyan"
-        ))
     fig_conf_main_std.update_layout(
         title="Threshold evaluation (standard deviation convolution)",
         xaxis_title="Threshold position",
@@ -1777,175 +1192,13 @@ def convolution_plots(*args):
         xanchor="right",
         x=1
     ))
-    fig_conf_main_std.update_layout(hovermode="x")
 
-    accuracy_avg = (tp_avg+tn_avg)/(tp_avg+tn_avg+fp_avg+fn_avg)
-    accuracy_max_avg = np.argmax(accuracy_avg)
-    precision_avg = tp_avg/(tp_avg+fp_avg)
-    sensitivity_avg = tp_avg/(tp_avg+fn_avg)
-    specificity_avg = tn_avg/(tn_avg+fp_avg)
-
-    accuracy_std = (tp_std+tn_std)/(tp_std+tn_std+fp_std+fn_std)
-    accuracy_max_std = np.argmax(accuracy_std)
-    precision_std = tp_std/(tp_std+fp_std)
-    sensitivity_std = tp_std/(tp_std+fn_std)
-    specificity_std = tn_std/(tn_std+fp_std)
-
-    fig_conf_adv_avg = go.Figure()
-    fig_conf_adv_avg.add_trace(
-        go.Scatter(
-            x=avg_samples,
-            y=accuracy_avg,
-            name="Accuracy",
-            mode='lines'
-        )
-    )
-    fig_conf_adv_avg.add_trace(
-        go.Scatter(
-            x=avg_samples,
-            y=precision_avg,
-            name="Precision",
-            mode="lines"
-        )
-    )
-    fig_conf_adv_avg.add_trace(
-        go.Scatter(
-            x=avg_samples,
-            y=sensitivity_avg,
-            name="Sensitivity",
-            mode="lines"
-        )
-    )
-    fig_conf_adv_avg.add_trace(
-        go.Scatter(
-            x=avg_samples,
-            y=specificity_avg,
-            name="Specificity",
-            mode='lines'
-        )
-    )
-    fig_conf_adv_avg.add_vline(
-        avg_samples[accuracy_max_avg],
-        annotation_text="Max accuracy",
-        annotation_position="bottom right"
-    )
-    fig_conf_adv_avg.update_layout(
-        xaxis_title="Threshold position",
-        yaxis_title="Value"
-    )
-    fig_conf_adv_avg.update_layout(legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="right",
-        x=1
-    ))
-    fig_conf_adv_avg.update_layout(hovermode="x")
-
-    fig_conf_adv_std = go.Figure()
-    fig_conf_adv_std.add_trace(
-        go.Scatter(
-            x=std_samples,
-            y=accuracy_std,
-            name="Accuracy",
-            mode='lines'
-        )
-    )
-    fig_conf_adv_std.add_trace(
-        go.Scatter(
-            x=std_samples,
-            y=precision_std,
-            name="Precision",
-            mode="lines"
-        )
-    )
-    fig_conf_adv_std.add_trace(
-        go.Scatter(
-            x=std_samples,
-            y=sensitivity_std,
-            name="Sensitivity",
-            mode="lines"
-        )
-    )
-    fig_conf_adv_std.add_trace(
-        go.Scatter(
-            x=std_samples,
-            y=specificity_std,
-            name="Specificity",
-            mode='lines'
-        )
-    )
-    fig_conf_adv_std.add_vline(
-        std_samples[accuracy_max_std],
-        annotation_text="Max accuracy",
-        annotation_position="bottom right"
-    )
-    fig_conf_adv_std.update_layout(
-        xaxis_title="Threshold position",
-        yaxis_title="Value"
-    )
-    fig_conf_adv_std.update_layout(legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="right",
-        x=1
-    ))
-    fig_conf_adv_std.update_layout(hovermode="x")
-
-    table_header_avg = [
-        html.Thead(html.Tr([html.Th("Parameter"), html.Th("Value")]))
+    return [
+        fig_just_stab, fig_img_avg, fig_img_std,
+        fig_histo_standard, fig_histo_avg, fig_histo_std,
+        fig_conf_main_avg, fig_conf_adv_avg, table_cond_avg,
+        fig_conf_main_std, fig_conf_adv_std, table_cond_std
     ]
-    row1_avg = html.Tr([
-        html.Td("Best Threshold (accuracy-wise)"),
-        html.Td("{:2e}".format(avg_samples[accuracy_max_avg]))
-    ])
-    row3_avg = html.Tr([
-        html.Td("Accuracy"),
-        html.Td("{:.2f}%".format((accuracy_avg[accuracy_max_avg]*100)))
-    ])
-    row2_avg = html.Tr([
-        html.Td("Precision"),
-        html.Td("{:.2f}%".format((precision_avg[accuracy_max_avg]*100)))
-    ])
-    row4_avg = html.Tr([
-        html.Td("Sensitivity"),
-        html.Td("{:.2f}%".format((sensitivity_avg[accuracy_max_avg]*100)))
-    ])
-    row5_avg = html.Tr([
-        html.Td("Specificity"),
-        html.Td("{:.2f}%".format((specificity_avg[accuracy_max_avg]*100)))
-    ])
-    table_body_avg = [html.Tbody(
-        [row1_avg, row2_avg, row3_avg, row4_avg, row5_avg])]
-
-    table_header_std = [
-        html.Thead(html.Tr([html.Th("Parameter"), html.Th("Value")]))
-    ]
-    row1_std = html.Tr([
-        html.Td("Best Threshold (accuracy-wise)"),
-        html.Td("{:2e}".format(std_samples[accuracy_max_std]))
-    ])
-    row3_std = html.Tr([
-        html.Td("Accuracy"),
-        html.Td("{:.2f}%".format((accuracy_std[accuracy_max_std]*100)))
-    ])
-    row2_std = html.Tr([
-        html.Td("Precision"),
-        html.Td("{:.2f}%".format((precision_std[accuracy_max_std]*100)))
-    ])
-    row4_std = html.Tr([
-        html.Td("Sensitivity"),
-        html.Td("{:.2f}%".format((sensitivity_std[accuracy_max_std]*100)))
-    ])
-    row5_std = html.Tr([
-        html.Td("Specificity"),
-        html.Td("{:.2f}%".format((specificity_std[accuracy_max_std]*100)))
-    ])
-    table_body_std = [html.Tbody(
-        [row1_std, row2_std, row3_std, row4_std, row5_std])]
-
-    return [fig_just_stab, fig_img_avg, fig_img_std, fig_histo_standard, fig_histo_avg, fig_histo_std, fig_conf_main_avg, fig_conf_adv_avg, table_header_avg + table_body_avg, fig_conf_main_std, fig_conf_adv_std, table_header_std + table_body_std]
 
 
 @app.callback(
@@ -1969,136 +1222,40 @@ def convolution_plots(*args):
     ]
 )
 @cache.memoize(timeout=CACHE_TIMEOUT)
-def threshold_plots(*args):
-    handler = handler_list[args[12]]
+def threshold_plots(
+    d_00, d_01, d_02, d_03, d_04, d_05, linked_options,
+    stability_time, input_negative, input_samples,
+    convolution_picker, input_kernel, md_0
+):
+    d_0 = (d_00, d_01, d_02, d_03, d_04, d_05)
+    handler = handler_list[md_0]
     param_list = handler.get_param_list()
     param_dict = {}
     for i in range(len(param_list)):
-        param_dict[param_list[i]] = args[i]
+        param_dict[param_list[i]] = d_0[i]
     stab_param = {
         'epsilon': param_dict["epsilon"],
         'mu': param_dict["mu"],
         'kick': 'no_kick'
     }
     stab_data = dh.stability_data_handler.get_data(stab_param).flatten()
-    tp = np.empty(args[9])
-    tn = np.empty(args[9])
-    fp = np.empty(args[9])
-    fn = np.empty(args[9])
     iterable = handler.get_data_all_turns(param_dict)
-    if iterable is None:
-        return go.Figure()
-    times = []
-    thresholds = []
-    accuracies = []
-    valid_conditions = []
-    for block in iterable:
-        t, ind_data = block
-        if "avg" in args[10]:
-            ind_data = avg_convolve(ind_data, args[11],
-                                    (False if "reverse" in args[6] else True))
-        elif "std" in args[10]:
-            ind_data = std_convolve(ind_data, args[11],
-                                    (False if "reverse" in args[6] else True))
-        ind_data = ind_data.flatten()
-        times.append(t)
-        if "log10" in args[6]:
-            ind_data[ind_data == 0] = np.nan
-            ind_data = np.log10(ind_data)
-        max_ind = np.nanmax(ind_data)
-        min_ind = np.nanmin(ind_data)
-        samples = np.linspace(min_ind, max_ind, args[9]+2)[1:-1]
-        valid_conditions.append(
-            np.count_nonzero(np.logical_not(np.isnan(ind_data)))
-        )
-        for i, v in enumerate(samples):
-            if "reverse" in args[6]:
-                tp[i] = np.count_nonzero(
-                    stab_data[ind_data >= v] >= args[7])
-                tn[i] = np.count_nonzero(
-                    stab_data[ind_data < v] <= args[7])
-                fp[i] = np.count_nonzero(
-                    stab_data[ind_data < v] >= args[7])
-                fn[i] = np.count_nonzero(
-                    stab_data[ind_data >= v] <= args[7])
-            else:
-                tp[i] = np.count_nonzero(
-                    stab_data[ind_data < v] >= args[7])
-                tn[i] = np.count_nonzero(
-                    stab_data[ind_data >= v] <= args[7])
-                fp[i] = np.count_nonzero(
-                    stab_data[ind_data >= v] >= args[7])
-                fn[i] = np.count_nonzero(
-                    stab_data[ind_data < v] <= args[7])
-        accuracy = (tp+tn)/(tp+tn+fp+fn)
-        max_accuracy = np.nanargmax(accuracy)
-        thresholds.append(samples[max_accuracy])
-        accuracies.append(accuracy[max_accuracy])
+    
+    conv = ("avg" if "avg" in convolution_picker else (
+        "std" if "std" in convolution_picker else None))
+    conv_kernel = None if conv is None else input_kernel
+    conv_options = ["reverse"] if "reverse" in linked_options else []
 
-    thresholds = [x for _, x in sorted(zip(times, thresholds))]
-    accuracies = [x for _, x in sorted(zip(times, accuracies))]
-    valid_conditions = [x for _, x in sorted(zip(times, valid_conditions))]
-    times = [x for x in sorted(times)]
-
-    final_fig = go.Figure()
-    final_fig.add_trace(
-        go.Scatter(
-            x=times,
-            y=thresholds,
-            name="Best Thresholds (accuracy-wise)",
-            mode="lines"
-        ),
-    )
-    final_fig.add_trace(
-        go.Scatter(
-            x=times,
-            y=accuracies,
-            name="Accuracy",
-            mode="lines",
-            yaxis="y2"
-        ),
-    )
-    final_fig.add_trace(
-        go.Scatter(
-            x=times,
-            y=valid_conditions,
-            name="Valid initial conditions",
-            mode="lines",
-            yaxis="y3"
-        ),
-    )
-    final_fig.update_layout(legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="right",
-        x=1
-    ))
-    final_fig.update_layout(hovermode="x")
-    final_fig.update_layout(
-        title="Theshold evolution for " + name_options[args[12]])
-    final_fig.update_xaxes(
-        title_text="N turns used for computing indicator",
-        type="log"
-    )
-    final_fig.update_layout(
-        xaxis=dict(
-            domain=[0.3, 0.85]
-        ),
-        yaxis=dict(
-            title="Threshold value"
-        ),
-        yaxis2=dict(
-            title="Accuracy value",
-            side="right",
-            overlaying="y",
-        ),
-        yaxis3=dict(
-            title="Valid initial conditions (particles not lost)",
-            side="left",
-            position=0.15,
-            overlaying="y",
-        )
+    final_fig = pm.confusion_plot_multiple(
+        stab_data,
+        iterable,
+        log10_ind="log10" in linked_options,
+        stab_thresh=stability_time,
+        sampling=input_samples,
+        reverse="reverse" in linked_options,
+        convolution=conv,
+        convolution_kernel=conv_kernel,
+        convolution_options=conv_options
     )
     return final_fig
 
