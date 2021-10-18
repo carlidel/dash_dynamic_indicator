@@ -15,7 +15,7 @@ import glob
 from datetime import datetime
 import matplotlib.cm
 import scipy.ndimage
-from numba import njit, prange
+#from numba import njit, prange
 
 
 def simple_heatmap(data, log10=False, title="", reversescale=False):
@@ -502,14 +502,14 @@ def evolution_plot(stab_data, iterable, min_turns, max_turns, sample_skip, log10
     return fig
 
 
-@njit(parallel=True)
+#@njit(parallel=True)
 def avg_convolve_core(padded_array, result, ks, take_top=True):
     ks = ks // 2
     if take_top:
         replacement = np.nanmax(padded_array)
     else:
         replacement = np.nanmin(padded_array)
-    for i in prange(len(result)):
+    for i in range(len(result)):
         for j in range(len(result[i])):
             if np.isnan(padded_array[i + ks, j + ks]):
                 result[i, j] = np.nan
@@ -534,14 +534,14 @@ def avg_convolve(array, ks, take_top=True):
     )
 
 
-@njit(parallel=True)
+#@njit(parallel=True)
 def std_convolve_core(padded_array, result, ks, take_top=True):
     ks = ks // 2
     if take_top:
         replacement = np.nanmax(padded_array)
     else:
         replacement = np.nanmin(padded_array)
-    for i in prange(len(result)):
+    for i in range(len(result)):
         for j in range(len(result[i])):
             if np.isnan(padded_array[i + ks, j + ks]):
                 result[i, j] = np.nan

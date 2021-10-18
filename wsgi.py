@@ -15,7 +15,7 @@ import glob
 from datetime import datetime
 import matplotlib.cm
 import scipy.ndimage
-from numba import njit, prange
+#from numba import njit, prange
 
 from layouts import layout_1, layout_2, layout_3, layout_4, layout_5, layout_6, layout_7, layout_8
 

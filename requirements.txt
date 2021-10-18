@@ -24,4 +24,3 @@ Werkzeug
 flask-caching
 matplotlib
 scipy
-numba
